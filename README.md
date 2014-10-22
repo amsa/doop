@@ -8,12 +8,15 @@ doop-core
 0. `Result_type`
 2. `CreateDB(dsn DSN_type) (bool, error)`
 3. `RemoveDB(dsn DSN_type) (bool, error)`
-4. `ListDB() ([]DSN_type, error)`
+3. `CloneDB(dsn DSN_type)`
+4. `ListDBs() ([]DSN_type, error)`
 5. `GetDB(dsn DSN_type) (DB_type, error)`
 
-##DB_Type interface requires to implement:
+##DB_type interface requires to implement:
 
-1. `createBranch(branch_name string) (bool, error)`
+1. `createBranch(branch_name string, base_branch string) (bool, error)`
 2. `removeBranch(branch_name string) (bool, error)`
-3. `listBranch() ([]string, error)`
+3. `listBranches() ([]string, error)`
 4. `executeSQL(sql_string string, branch_name string, result *Result_type) (bool, error)`
+
+##Result_type interface
