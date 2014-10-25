@@ -2,13 +2,10 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/amsa/doop-core/core"
 )
-
-var DEBUG bool = true
 
 func help() {
 	fmt.Println("doop [command] [options]")
@@ -21,36 +18,24 @@ func help() {
 	-v			enable verbose mode`)
 }
 
-func initialize(args []string) {
-	if len(args) == 0 {
-		fmt.Println("DSN string is required to initialize doop environment. (e.g. sqlite://mydb.db)")
+func initialize(doop *core.Doop, args []string) {
+	if len(args) != 2 {
+		fmt.Println("Too few arguments passed. usage: doop init <alias> <DSN> (e.g. doop init mydb sqlite:///usr/local/mydb.db)")
 		return
 	}
-	dbId := core.GetDbId(args[0])
-	doopDir := core.GetDoopDir()
-	if _, err := os.Stat(doopDir); err != nil {
-		debug("Doop dir does not exist. Creating doop directory at %s...", doopDir)
-		os.Mkdir(doopDir, 0755)
+	_, err := doop.TrackDb(args[0], args[1])
+	if err != nil {
+		fmt.Println(err)
 	}
-	debug("Database id: %s", dbId)
 	// TODO: create the database directory inside doop dir (if not exists)
 }
 
-func debug(values ...interface{}) {
-	if DEBUG {
-		if len(values) == 0 {
-			log.Println(values[0])
-		} else {
-			log.Printf(values[0].(string), values[1:]...)
-		}
-	}
-}
-
 func main() {
+	doop := core.GetDoop()
 	var args []string
 	for i := range os.Args {
 		if os.Args[i] == "-v" { // enable verbose mode
-			DEBUG = true
+			core.SetDebug(true)
 		} else {
 			args = append(args, os.Args[i])
 		}
@@ -62,7 +47,7 @@ func main() {
 	switch args[1] {
 	case "init":
 		fmt.Println("Initializing...")
-		initialize(args[2:])
+		initialize(doop, args[2:])
 	default:
 		fmt.Errorf("Invalid command: %s", os.Args[1])
 	}

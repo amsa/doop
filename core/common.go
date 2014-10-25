@@ -1,14 +1,19 @@
 package core
 
+import (
+	"errors"
+	"os"
+)
+
 //file: common.go
 //only this file contains APIs that are exported to doop-core user.
 
 //Package Level
 type Doop struct {
-	home_dir string
+	homeDir string
 }
 
-type DoopDB struct {
+type DoopDb struct {
 	dbName string
 }
 
@@ -16,40 +21,46 @@ type Result struct {
 	rawResult string
 }
 
-func GetDoop() (*Doop, error) {
+func GetDoop() *Doop {
+	return &Doop{getDoopDir()}
+}
+
+// TrackDb initializes the database directory with a given identifier (hash)
+func (doop *Doop) TrackDb(dbName string, dsn string) (bool, error) {
+	dbDir := getDbDir(generateDbId(dsn))
+	if _, err := os.Stat(dbDir); err != nil {
+		os.Mkdir(dbDir, 0755)
+		return true, nil
+	}
+	Debug("Database already initialized in %s...", dbDir)
+	return false, errors.New("Database exists!")
+}
+
+func (doop *Doop) ListDbs() ([]string, error) {
 	return nil, nil
 }
 
-//Methods of Doop
-func (doop *Doop) TrackDB(dsn string) (bool, error) {
-	return false, nil
-}
-
-func (doop *Doop) ListDBs() ([]string, error) {
+func (doop *Doop) GetDb(dbName string) (*DoopDb, error) {
 	return nil, nil
 }
 
-func (doop *Doop) GetDB(dbName string) (*DoopDB, error) {
-	return nil, nil
-}
-
-func (doop *Doop) UntrackDB(dbName string) (bool, error) {
+func (doop *Doop) UntrackDb(dbName string) (bool, error) {
 	return false, nil
 }
 
 //Methods of DoopDB
-func (db *DoopDB) createBranch(branchName string, baseBranch string) (bool, error) {
+func (db *DoopDb) createBranch(branchName string, baseBranch string) (bool, error) {
 	return false, nil
 }
 
-func (db *DoopDB) removeBranch(branchName string) (bool, error) {
+func (db *DoopDb) removeBranch(branchName string) (bool, error) {
 	return false, nil
 }
 
-func (db *DoopDB) listBranches() (bool, error) {
+func (db *DoopDb) listBranches() (bool, error) {
 	return false, nil
 }
 
-func (db *DoopDB) executeSQL(sqlCommand string, branchName string) (*Result, error) {
+func (db *DoopDb) executeSQL(sqlCommand string, branchName string) (*Result, error) {
 	return nil, nil
 }
