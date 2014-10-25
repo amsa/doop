@@ -32,9 +32,19 @@ Administration commands:
 - doop rm -b <branch@alias> (e.g. doop rm -b myfork@testdb)
 - doop list  [<alias>] (e.g. doop list [testdb])  -- if <alias> is passed the list of branches will be returned
 - doop stats [<alias>] (e.g. doop stats [testdb])
+- doop export [<branch@alias>] (e.g. doop export testdb@myfork)
 ```
 
 Query command:
 ```
 - doopq <branch/db> <query> (e.g. doopq myfork@testdb "SELECT * FROM user)
+```
+
+DSN Format
+===========
+There is a standard format for DSN to connect to different databases:
+```
+- sqlite:     sqlite://<path to db file> (e.g. sqlite:///usr/local/myapp/mydb.db)
+- mysql:      mysql://username:password@address/dbname?param=value
+- postgres:   postgresql://username:password@address/dbname?param=value
 ```
