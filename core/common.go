@@ -9,11 +9,11 @@ type Doop struct {
 }
 
 type DoopDB struct {
-	db_name string
+	dbName string
 }
 
 type Result struct {
-	raw_result string
+	rawResult string
 }
 
 func GetDoop() (*Doop, error) {
@@ -29,20 +29,20 @@ func (doop *Doop) ListDBs() ([]string, error) {
 	return nil, nil
 }
 
-func (doop *Doop) GetDB(db_name string) (*DoopDB, error) {
+func (doop *Doop) GetDB(dbName string) (*DoopDB, error) {
 	return nil, nil
 }
 
-func (doop *Doop) UntrackDB(db_name string) (bool, error) {
+func (doop *Doop) UntrackDB(dbName string) (bool, error) {
 	return false, nil
 }
 
 //Methods of DoopDB
-func (db *DoopDB) createBranch(branch_name string, base_branch string) (bool, error) {
+func (db *DoopDB) createBranch(branchName string, baseBranch string) (bool, error) {
 	return false, nil
 }
 
-func (db *DoopDB) removeBranch(branch_name string) (bool, error) {
+func (db *DoopDB) removeBranch(branchName string) (bool, error) {
 	return false, nil
 }
 
@@ -50,6 +50,6 @@ func (db *DoopDB) listBranches() (bool, error) {
 	return false, nil
 }
 
-func (db *DoopDB) executeSQL(sql_command string, branch_name string) (*Result, error) {
+func (db *DoopDB) executeSQL(sqlCommand string, branchName string) (*Result, error) {
 	return nil, nil
 }
