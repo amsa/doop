@@ -24,6 +24,7 @@ doop-core
 Command-line interface
 =======================
 Administration commands:
+```
 - doop init <alias> <DSN> (e.g. doop init testdb sqlite://mytestdb.db)
 - doop branch <alias> <new> <from> (e.g. doop branch testdb myfork test)
 - doop merge  <alias> <to> <from> (e.g. doop merge testdb test myfork)
@@ -32,6 +33,9 @@ Administration commands:
 - doop list  [<alias>] (e.g. doop list [testdb])  -- if <alias> is passed the list of branches will be returned
 - doop stats [<alias>] (e.g. doop stats [testdb])
 - doop export [<branch@alias>] (e.g. doop export testdb@myfork)
+```
 
 Query command:
+```
 - doopq <branch/db> <query> (e.g. doopq myfork@testdb "SELECT * FROM user)
+```
