@@ -34,12 +34,29 @@ func GetDoop() *Doop {
 	return &Doop{getDoopDir()}
 }
 
+/* Private methods:
+************************************
+ */
+// getDbId returns the identifier (hash) for the given database name
+func (doop *Doop) getDbId(dbName string) (string, error) {
+	return ""
+}
+
+// setDbId returns the identifier (hash) for the given database name
+func (doop *Doop) setDbId(dbName string, dbId string) (bool, error) {
+
+}
+
+/* Public methods:
+************************************
+ */
 // TrackDb initializes the database directory with a given identifier (hash)
 func (doop *Doop) TrackDb(dbName string, dsn string) (bool, error) {
-	dbDir := getDbDir(generateDbId(dsn))
+	dbId := generateDbId(dsn)
+	dbDir := getDbDir(dbId)
 	if _, err := os.Stat(dbDir); err != nil {
 		os.Mkdir(dbDir, 0755)
-		// TODO: save the mapping of dbName and the db identifier (hash)
+		doop.setDbId(dbName, dbId)
 		return true, nil
 	}
 	Debug("Database already initialized in %s", dbDir)
