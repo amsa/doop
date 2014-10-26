@@ -9,7 +9,16 @@ import (
 )
 
 type SQLite struct {
-	metaInfo string
+	dsn             string
+	db_name         string
+	connection_path string
+}
+
+type SQLiteResult struct {
+}
+
+func (result *SQLiteResult) getRaw() {
+
 }
 
 func (sqliteDb *SQLite) getInfo() string {
@@ -17,7 +26,7 @@ func (sqliteDb *SQLite) getInfo() string {
 }
 
 func (sqliteDb *SQLite) executeSQL(query string) (*core.Result, error) {
-	db, err := sql.Open("sqlite3", "./test-sqlite.db")
+	db, err := sql.Open("sqlite3", sqliteDb.connection_path)
 	if err != nil {
 		log.Fatal(err)
 	}
