@@ -26,8 +26,8 @@ type DoopDb interface {
 	executeSQL(sqlCommand string, branchName string) (*Result, error)
 }
 
-type Result struct {
-	rawResult string
+type Result interface {
+	getRaw() string
 }
 
 func GetDoop() *Doop {
