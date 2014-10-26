@@ -19,10 +19,10 @@ type Doop struct {
 
 type DoopDb interface {
 	//Methods of DoopDB interface
-	getInfo()
+	getInfo() (string, error)
 	createBranch(branchName string, baseBranch string) (bool, error)
 	removeBranch(branchName string) (bool, error)
-	listBranches() (bool, error)
+	listBranches() ([]string, error)
 	executeSQL(sqlCommand string, branchName string) (*Result, error)
 }
 
