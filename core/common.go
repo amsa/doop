@@ -1,20 +1,29 @@
 package core
 
+/*
+file: common.go
+
+	Only this file contains APIs that are exported to doop-core user.
+
+*/
+
 import (
 	"errors"
 	"os"
 )
-
-//file: common.go
-//only this file contains APIs that are exported to doop-core user.
 
 //Package Level
 type Doop struct {
 	homeDir string
 }
 
-type DoopDb struct {
-	dbName string
+type DoopDb interface {
+	//Methods of DoopDB interface
+	getInfo()
+	createBranch(branchName string, baseBranch string) (bool, error)
+	removeBranch(branchName string) (bool, error)
+	listBranches() (bool, error)
+	executeSQL(sqlCommand string, branchName string) (*Result, error)
 }
 
 type Result struct {
@@ -47,21 +56,4 @@ func (doop *Doop) GetDb(dbName string) (*DoopDb, error) {
 
 func (doop *Doop) UntrackDb(dbName string) (bool, error) {
 	return false, nil
-}
-
-//Methods of DoopDB
-func (db *DoopDb) createBranch(branchName string, baseBranch string) (bool, error) {
-	return false, nil
-}
-
-func (db *DoopDb) removeBranch(branchName string) (bool, error) {
-	return false, nil
-}
-
-func (db *DoopDb) listBranches() (bool, error) {
-	return false, nil
-}
-
-func (db *DoopDb) executeSQL(sqlCommand string, branchName string) (*Result, error) {
-	return nil, nil
 }
