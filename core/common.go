@@ -6,11 +6,6 @@ import (
 	"log"
 )
 
-const (
-	DOOP_DIRNAME      = ".doop"
-	DOOP_MAPPING_FILE = "doopm"
-)
-
 var debug bool = true
 
 func SetDebug(val bool) {
