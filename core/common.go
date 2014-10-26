@@ -1,76 +1,34 @@
 package core
 
-/*
-file: common.go
-
-	Only this file contains APIs that are exported to doop-core user.
-
-*/
-
 import (
-	"errors"
-	"os"
+	"crypto/sha1"
+	"fmt"
+	"log"
 )
 
-//Package Level
-type Doop struct {
-	homeDir string
+const (
+	DOOP_DIRNAME      = ".doop"
+	DOOP_MAPPING_FILE = "doopm"
+)
+
+var debug bool = true
+
+func SetDebug(val bool) {
+	debug = val
 }
 
-type DoopDb interface {
-	//Methods of DoopDB interface
-	getInfo() (string, error)
-	createBranch(branchName string, baseBranch string) (bool, error)
-	removeBranch(branchName string) (bool, error)
-	listBranches() ([]string, error)
-	executeSQL(sqlCommand string, branchName string) (*Result, error)
-}
-
-type Result interface {
-	getRaw() string
-}
-
-func GetDoop() *Doop {
-	return &Doop{getDoopDir()}
-}
-
-/* Private methods:
-************************************
- */
-// getDbId returns the identifier (hash) for the given database name
-func (doop *Doop) getDbId(dbName string) (string, error) {
-	return ""
-}
-
-// setDbId returns the identifier (hash) for the given database name
-func (doop *Doop) setDbId(dbName string, dbId string) (bool, error) {
-
-}
-
-/* Public methods:
-************************************
- */
-// TrackDb initializes the database directory with a given identifier (hash)
-func (doop *Doop) TrackDb(dbName string, dsn string) (bool, error) {
-	dbId := generateDbId(dsn)
-	dbDir := getDbDir(dbId)
-	if _, err := os.Stat(dbDir); err != nil {
-		os.Mkdir(dbDir, 0755)
-		doop.setDbId(dbName, dbId)
-		return true, nil
+func Debug(values ...interface{}) {
+	if debug {
+		if len(values) == 0 {
+			log.Println(values[0])
+		} else {
+			log.Printf(values[0].(string), values[1:]...)
+		}
 	}
-	Debug("Database already initialized in %s", dbDir)
-	return false, errors.New("Database exists!")
 }
 
-func (doop *Doop) ListDbs() ([]string, error) {
-	return nil, nil
-}
-
-func (doop *Doop) GetDb(dbName string) (*DoopDb, error) {
-	return nil, nil
-}
-
-func (doop *Doop) UntrackDb(dbName string) (bool, error) {
-	return false, nil
+// generaeDbId generates the unique identifier for the given DSN
+func generateDbId(dsn string) string {
+	h := sha1.New()
+	return fmt.Sprintf("%x", h.Sum([]byte(dsn)))
 }
