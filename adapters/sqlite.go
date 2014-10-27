@@ -2,52 +2,48 @@ package adapter
 
 import (
 	"database/sql"
-	"log"
-
-	"github.com/amsa/doop-core/core"
 	_ "github.com/mattn/go-sqlite3"
 )
 
 type SQLite struct {
-	dsn             string
-	db_name         string
-	connection_path string
+	dsn     string
+	db_name string
+	db      *sql.DB
 }
 
-type SQLiteResult struct {
+func MakeSQLite(dsn string, db_name string, connection_path string) (*SQLite, error) {
+	db, err := sql.Open("sqlite3", connection_path)
+	ret := &SQLite{dsn, db_name, db}
+	return ret, err
 }
 
-func (result *SQLiteResult) getRaw() {
-
+func (sqliteDb *SQLite) Close() error {
+	return sqliteDb.db.Close()
 }
 
-func (sqliteDb *SQLite) getInfo() string {
-	return ""
+func (sqliteDb *SQLite) Query(branchName string, statement string, args ...interface{}) (*sql.Rows, error) {
+	//no branch involved, simply return the query on base table
+	rows, err := sqliteDb.db.Query(statement, args)
+	return rows, err
 }
 
-func (sqliteDb *SQLite) executeSQL(query string) (*core.Result, error) {
-	db, err := sql.Open("sqlite3", sqliteDb.connection_path)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-	rows, err := db.Query(query)
-	defer rows.Close()
-	if err != nil {
-		log.Fatal(err)
-	}
-	// TODO: create the result set
-	return nil, nil
+func (sqliteDb *SQLite) Exec(branchName string, statement string, args ...interface{}) (sql.Result, error) {
+	result, err := sqliteDb.db.Exec(statement, args)
+	return result, err
 }
 
-func (sqliteDb *SQLite) createBranch(branchName string, baseBranch string) (bool, error) {
+func (sqliteDb *SQLite) CreateBranch(branchName string, baseBranch string) (bool, error) {
 	return false, nil
 }
 
-func (sqliteDb *SQLite) removeBranch(branchName string) (bool, error) {
+func (sqliteDb *SQLite) RemoveBranch(branchName string) (bool, error) {
 	return false, nil
 }
 
-func (sqliteDb *SQLite) listBranches() ([]string, error) {
+func (sqliteDb *SQLite) MergeBranch(to string, from string) (bool, error) {
+	return false, nil
+}
+
+func (sqliteDb *SQLite) ListBranches() ([]string, error) {
 	return nil, nil
 }
