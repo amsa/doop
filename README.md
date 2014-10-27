@@ -1,5 +1,6 @@
 doop-core
 =========
+Doop is a tool that aims to provide branching and versioning for your database, just like what Git does for your code base!
 
 ##doop-core package provides following APIs:
 
