@@ -64,11 +64,9 @@ Representing `B[i].T[j]` by graph, it looks like:
 ###Terms We Use
 
 * Columns in Snapshot is `snapshot_columns`.
-* Columns in VSection, excluding the foreign key pointing to snapshot, are `new_columns`.
-* The union of columns in Snapshot and VSection is `complete_schema`.
-* Columns in `delc_j`'s rows, we call them `phantom_columns`.
+* Columns in VSection, excluding the foreign key pointing to the row in snapshot, are `new_columns`.
+* Columns in `CDel`'s rows, we call them `phantom_columns`.
 * Columns in `snapshot_columns` excluding `phantom_columns`, we call them `concrete_snapshot_columns`.
-* Columns in `complete_schema` excluding `phantom_columns`, we call them `concrete_schema`.
 
 ##Write on `B[i].T[j]`
 
@@ -190,7 +188,7 @@ In `B[i]`, we issue statement:
 
     ALTER TABLE t_j DROP COLUMN column_name;
 
-We change it to:
+We rewrite it to:
 
     if column_name in vsection
         ALTER TABLE vsection DROP COLUMN column_name; 
