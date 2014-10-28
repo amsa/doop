@@ -26,7 +26,7 @@ To address the mechanism, assuming we already have a database, we have following
 `B[i].T[j]` is the table seen by user. It's a logical table which means that data is 
 not physically arranged as how `B[i].T[j]` looks like; instead, data is 
 stored in `B[i].Snapshot[j]`, `B[i].HSection[j]`, `B[i].VSection[j]`, `B[i],CSection[j]`, `B[i].RDel[j]`, `B[i].CDel[j]`, 
-we call them `companison sections` of `B[i].T[j]`. 
+we call them `companion sections` of `B[i].T[j]`. 
 
 Write(insert, delete, update rows, add and drop columns) operations on `B[i].T[j]` go 
 to `B[i].HSection[j]` as well as other companion sections; and when there is queries on `B[i].T[j]`, 
@@ -52,85 +52,141 @@ Representing `B[i].T[j]` by graph, it looks like:
     RDel: rows deleted in snapshot
     CDel: columns deleted in snapshot
 
+###Schema and Roles of Companion Sections
+
+* Snapshot is original table when branch is created;
+* HSection has same schema as Snapshot
+* VSection's schema contains newly-added columns in this branch as well as a foreign key to Snapshot; Snapshot and VSection have 1-to-1 relation.
+* CSection has same schema as VSection; CSection has 1-to-1 relation to HSection and references HSection's primary key and set to `ON DELETE CASCADE`.
+* RDel: the only column in RDel in the foreign key referencing primary key of Snapshot.
+* CDel: only column in CDel, it's string type, contains the name of deleted columns in Snapshot. 
+
+###Terms We Use
+
+* Columns in Snapshot is `snapshot_columns`.
+* Columns in VSection, excluding the foreign key pointing to snapshot, are `new_columns`.
+* The union of columns in Snapshot and VSection is `complete_schema`.
+* Columns in `delc_j`'s rows, we call them `phantom_columns`.
+* Columns in `snapshot_columns` excluding `phantom_columns`, we call them `concrete_snapshot_columns`.
+* Columns in `complete_schema` excluding `phantom_columns`, we call them `concrete_schema`.
+
 ##Write on `B[i].T[j]`
 ###Insert new records
 In `B[i]`, we issue the statement: 
 
-    INSERT INTO t_j VALUES (value1,value2,value3,...,value_n);
+    INSERT INTO t VALUES (value1,value2,value3,...,value_n);
 
-First of all, `value1,value2,...,value_n` can be divided into two subsets:
+Basically, we have:
 
-* `value1,value2,...,value_i` are the values for columns already in `B[i].Snapshot[j]`, we call them `snapshot values`.
-* `value_(i+1),...,value_n` are values for columns not in `Snapshot[j]`, then these values must go to `VSection[j]`. We call them `vsection values`.
+* `hsection_values`: values for `snapshot_columns`; added NULL for values for `phantom_columns`; 
+* `csection_values`: values for `new_columns` and the primary key of this record.
 
-Assume `key` is the primary key of `T[j]` and `value1` is the value for it, the insertion becomes:
+Then we rewrite the statement into:
         
-    INSERT INTO hsection_j VALUES (snapshot_values);
-    if vsection_values is not empty
-        INSERT INTO csection_j VALUES (value1, vsection_values);
-    endif
+    INSERT INTO hsection VALUES (hsection_values);
+    INSERT INTO csection VALUES (csection_values);
 
 ###Add new columns
 In `B[i]`, we issue the statement:
     
-    ALTER TABLE t_j ADD column_name column_type;
+    ALTER TABLE t ADD column_name column_type;
 
-Assume `key` is the primary key of `t_j` and its type is `key_type`, the statement above becomes
+The statement above becomes
 
-    ALTER TABLE vsection_j ADD column_name column_type;
-    ALTER TABLE csection_j ADD column_name column_type;
+    ALTER TABLE vsection ADD column_name column_type;
+    ALTER TABLE csection ADD column_name column_type;
 
 ###Delete rows
 In `B[i]`, we issue statement:
 
-    DELETE FROM t_j WHERE iampredicate;
+    DELETE FROM t WHERE iampredicate;
 
-it becomes
+It becomes
 
-    SELECT key INTO all FROM t_j WHERE iampredicate;    
-    SELECT key INTO in_h FROM all WHERE key IN
-        (SELECT key FROM hsection_j);
-    if in_h is not empty
-        INSERT INTO rdel_j 
-            SELECT key FROM all WHERE key NOT IN in_h;
-        DELETE FROM vsection_j WHERE key IN in_h;       
-        DELETE FROM hsection_j WHERE key IN in_h;
-    else
-        INSERT INTO rdel_j SELECT key FROM all;
-    endif
+    ;mark rows in snapshot
+    INSERT INTO rdel SELECT key FROM
+    (
+        (SELECT concrete_snapshot_columns FROM snapshot) 
+        NATURAL INNER JOIN vsection
+        INNER JOIN rdel ON vsection.key != rdel.key
+    )
+    WHERE iampredicate;
     
-Then we remove the intermediate tables.
+    ;delete rows in hsection
+    ;note that records in csection will be deleted automatically because of cascade deletion.
+    DELETE FROM hsection WHERE hsection.key IN
+    (
+        SELECT key FROM 
+        (
+            (SELECT concrete_snapshot_columns FROM hsection) 
+            NATURAL INNER JOIN csection
+        )
+        WHERE iampredicate;
+    )
+    
 
 ###Update rows
 In `B[i]`, we issue the statement:
 
-    UPDATE t_j SET column1=value1,column2=value2,... WHERE iampredicate;
+    UPDATE t SET column1=value1,column2=value2,... WHERE iampredicate;
     
 
-Columns in the statement can be categorized into:
+We rewrite the statement into:
     
-* `column1,column2,...,column_i` which are in snapshot_j, we call them snapshot_columns.
-* `column_(i+1),...,column_n` which appear in vsection_j, we call them vsection_columns.
+    ;======= update rows in hsection and csection =======
+    SELECT key INTO updated_non_snapshot_rows FROM 
+    (
+        (SELECT concrete_snapshot_columns FROM hsection) 
+        NATURAL INNER JOIN csection
+    )
+    WHERE iampredicate;
 
-    SELECT key INTO all FROM t_j WHERE iampredicate;
-    SELECT key INTO in_h FROM all WHERE key IN
-        (SELECT key FROM hsection_j);
-    if in_h is not empty
-        UPDATE hsection_j SET column1=value1,column2=value2,...,column_i=value_i WHERE key IN
-            (SELECT key FROM in_h);
-        
+    ;update hsection
+    UPDATE hsection SET column1=value1,...,column_i=value_i WHERE key IN 
+        (SELECT * FROM updated_non_snapshot_rows);
 
+    ;update csection
+    UPDATE csection SET columni_(i+1)=value_(i+1),...,column_n=value_n WHERE key IN 
+        (SELECT * FROM updated_non_snapshot_rows);
 
+    ;======= done =======
+
+    ;======= update rows in snapshot ========
+    ;find out rows affected in snapshot
+    SELECT concrete_snapshot_columns AS proper_names, new_columns into updated_snapshot_rows
+        FROM snapshot 
+        NATURAL INNER JOIN vsection
+        INNER JOIN rdel ON vsection.key != rdel.key
+    WHERE iampredicate;
+
+    ;mark rows affected in snapshot
+    INSERT INTO rdel
+    SELECT key FROM updated_snapshot_rows;
+
+    ;apply the update for rows in snapshot
+    UPDATE updated_snapshot_rows SET column1=value1,column2=value2,...; 
+
+    ;insert hsection 
+    INSERT INTO hsection
+    (concrete_snapshot_columns) 
+    SELECT concrete_snapshot_columns FROM updated_snapshot_rows;
+
+    ;insert the vsection 
+    INSERT INTO vsection 
+    SELECT primary_key, new_columns FROM updated_snapshot_rows;  
+    ;====== done ======
     
 
 ###Drop columns
 In `B[i]`, we issue statement:
 
     ALTER TABLE t_j DROP COLUMN column_name;
+
 We change it to:
 
-    if column_name in vsection_j
-        ALTER TABLE vsection_j DROP COLUMN column_name; 
+    if column_name in vsection
+        ALTER TABLE vsection DROP COLUMN column_name; 
+        ALTER TABLE csection DROP COLUMN column_name; 
     else
         INSERT INTO cdel_j VALUES (column_name); 
     endif
@@ -141,27 +197,17 @@ In `B[i]`, given query like:
 
     SELECT * FROM t_j WHERE iampredicate;
 
-Columns in `t_j` can be categorized as:
-
-* Columns in `snapshot_j` or `vsection_j`, we call them `complete_columns`.
-* Columns appear in `delc_j`, we call them `phantom_columns`.
-* Columns in `complete_columns` excludes `phantom_columns`, we call them `concrete_columns`.
-
 ###Reconstruct `B[i].T[j]`
-We can reassemble `t_j` by:
+We can reassemble `t` by:
 
-    SELECT * INTO all_rows FROM (
-        (SELECT * FROM snapshot_j WHERE snapshot_j.key NOT IN
-            (SELECT key FROM hsection_j))
+        (SELECT concrete_snapshot_columns, new_columns FROM hsection 
+        NATURAL INNER JOIN csection)
             UNION
-        (SELECT * FROM hsection_j)
-    );
-        
-    SELECT * INTO t_j FROM all_rows NATURAL INNER JOIN vsection_j 
-    WHERE key NOT IN 
-        (SELECT key FROM rdel_j);
+        (SELECT concrete_snapshot_columns, new_columns FROM snapshot
+        NATURAL INNER JOIN vsection
+        INNER JOIN rdel ON vsection.key != rdel.key)
 
-Then we can evaluate the query on `t_j`. 
+Then we can evaluate the query on `t`. 
 
         
 
