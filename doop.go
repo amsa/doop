@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/amsa/doop-core/core"
+	"github.com/amsa/doop/core"
 )
 
 func help() {
