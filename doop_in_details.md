@@ -19,18 +19,38 @@ To address the mechanism, assuming we already have a database, we have following
 * `B[i].Snapshot[j]` denotes snapshot of table `j` in branch `i`.
 * `B[i].HSection[j]` denotes the `horizonal section` of table `j` in branch `i`.
 * `B[i].VSection[j]` denotes the `vertical section` of table `j` in branch `i`.
-* `B[i].RDel[j]` denotes the deleted rows's primary keys in table `j` in branch `i`.
-* `B[i].CDel[j]` denotes the dropped column's names in table `j` in branch `i`.
+* `B[i].CSection[j]` denotes the `cross section` of table `j` in branch `i`.
+* `B[i].RDel[j]` denotes the deleted rows' primary keys in table `j` in branch `i`.
+* `B[i].CDel[j]` denotes the dropped columns' names in table `j` in branch `i`.
 
-`B[i].T[j]` is the table seen by user. It's a logical table which means that data in it is 
+`B[i].T[j]` is the table seen by user. It's a logical table which means that data is 
 not physically arranged as how `B[i].T[j]` looks like; instead, data is 
-stored in `B[i].Snapshot[j]`, `B[i].HSection[j]`, `B[i].VSection[j]`, `B[i].RDel[j]`, `B[i].CDel[j]`, 
+stored in `B[i].Snapshot[j]`, `B[i].HSection[j]`, `B[i].VSection[j]`, `B[i],CSection[j]`, `B[i].RDel[j]`, `B[i].CDel[j]`, 
 we call them `companison sections` of `B[i].T[j]`. 
-
 
 Write(insert, delete, update rows, add and drop columns) operations on `B[i].T[j]` go 
 to `B[i].HSection[j]` as well as other companion sections; and when there is queries on `B[i].T[j]`, 
 we reassemble `B[i].T[j]` from its companion sections. 
+
+Representing `B[i].T[j]` by graph, it looks like:
+
+    ---------------------
+    |               | V |
+    |  Snapshot     | S |
+    |               |   |
+    |               |   |
+    |               |   |
+    |               |   |
+    |               |   |
+    |               |   |
+    |               |   |
+    |---------------|---|
+    |               | C |
+    |  HS           | S |
+    |---------------|---|
+
+    RDel: rows deleted in snapshot
+    CDel: columns deleted in snapshot
 
 ##Write on `B[i].T[j]`
 ###Insert new records
@@ -47,9 +67,9 @@ Assume `key` is the primary key of `T[j]` and `value1` is the value for it, the 
         
     INSERT INTO hsection_j VALUES (snapshot_values);
     if vsection_values is not empty
-        INSERT INTO vsection_j VALUES (value1, vsection_values);
+        INSERT INTO csection_j VALUES (value1, vsection_values);
     endif
-    
+
 ###Add new columns
 In `B[i]`, we issue the statement:
     
@@ -57,15 +77,8 @@ In `B[i]`, we issue the statement:
 
 Assume `key` is the primary key of `t_j` and its type is `key_type`, the statement above becomes
 
-    if vsection_j does not exist
-        SELECT * INTO vsection_j
-        FROM 
-        (SELECT key FROM snapshot_j
-            UNION
-        SELECT key FROM hsection_j); 
-    endif
-    
     ALTER TABLE vsection_j ADD column_name column_type;
+    ALTER TABLE csection_j ADD column_name column_type;
 
 ###Delete rows
 In `B[i]`, we issue statement:
@@ -87,6 +100,29 @@ it becomes
     endif
     
 Then we remove the intermediate tables.
+
+###Update rows
+In `B[i]`, we issue the statement:
+
+    UPDATE t_j SET column1=value1,column2=value2,... WHERE iampredicate;
+    
+
+Columns in the statement can be categorized into:
+    
+* `column1,column2,...,column_i` which are in snapshot_j, we call them snapshot_columns.
+* `column_(i+1),...,column_n` which appear in vsection_j, we call them vsection_columns.
+
+    SELECT key INTO all FROM t_j WHERE iampredicate;
+    SELECT key INTO in_h FROM all WHERE key IN
+        (SELECT key FROM hsection_j);
+    if in_h is not empty
+        UPDATE hsection_j SET column1=value1,column2=value2,...,column_i=value_i WHERE key IN
+            (SELECT key FROM in_h);
+        
+
+
+    
+
 ###Drop columns
 In `B[i]`, we issue statement:
 
