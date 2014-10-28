@@ -8,20 +8,30 @@ package core
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
-	"os/user"
 	"strings"
+
+	"code.google.com/p/gcfg"
+	//_ "github.com/mattn/go-sqlite3"
 )
 
 const (
 	DOOP_DIRNAME      = ".doop"
+	DOOP_CONF_FILE    = "config"
 	DOOP_MAPPING_FILE = "doopm"
 )
 
 type Doop struct {
 	homeDir string
+	config  DoopConfig
+}
+
+type DoopConfig struct {
+	Database struct {
+		DSN string
+	}
 }
 
 func GetDoop() *Doop {
@@ -37,17 +47,49 @@ func (doop *Doop) getDoopDir() string {
 	if doop.homeDir != "" {
 		return doop.homeDir
 	}
-	currentUser, err := user.Current()
-	if err != nil {
-		log.Fatal(err)
+	doop.homeDir = getDoopHome(DOOP_DIRNAME)
+
+	if _, err := os.Stat(doop.homeDir); err != nil {
+		fmt.Println("Doop environment is not installed yet.")
+		os.Exit(1)
 	}
-	homeDir := strings.Join([]string{currentUser.HomeDir, DOOP_DIRNAME}, string(os.PathSeparator))
-	if _, err := os.Stat(homeDir); err != nil {
-		Debug("Doop dir does not exist. Creating doop directory at %s...", homeDir)
-		os.Mkdir(homeDir, 0755)
+	return doop.homeDir
+}
+
+func (doop *Doop) Install(args []string) {
+	if len(args) == 0 {
+		fmt.Println("In order to install Doop you need to pass a valid DSN. Doop will use this database to keep its own tables.")
+		return
 	}
-	doop.homeDir = homeDir
-	return homeDir
+	doop.homeDir = getDoopHome(DOOP_DIRNAME)
+	if _, err := os.Stat(doop.homeDir); err == nil {
+		fmt.Println("Doop is ready! You can create a new Doop project.")
+		return
+	}
+	Debug("Doop dir does not exist. Creating doop directory at %s...", doop.homeDir)
+	handleError(os.Mkdir(doop.homeDir, 0755)) // Create Doop home directory
+
+	// Create configuration file
+	dbFilePath := args[0]
+	defaultConfig := `[database]
+DSN = ` + dbFilePath + `
+`
+	handleError(ioutil.WriteFile(doop.getConfigFile(), []byte(defaultConfig), 0644))
+
+	// TODO: create database based on the DSN
+	//db, err := sql.Open("sqlite3", dbFilePath) // Create default database (sqlite)
+	//handleError(err)
+	//defer db.Close()
+}
+
+func (doop *Doop) getConfig() {
+	var cfg DoopConfig
+	handleError(gcfg.ReadFileInto(&cfg, doop.getConfigFile()))
+	doop.config = cfg
+}
+
+func (doop *Doop) getConfigFile() string {
+	return strings.Join([]string{doop.getDoopDir(), DOOP_CONF_FILE}, string(os.PathSeparator))
 }
 
 // getDbDir returns the path to the database directory inside the Doop home directory

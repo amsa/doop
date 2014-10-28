@@ -11,7 +11,8 @@ func help() {
 	fmt.Println("doop [command] [options]")
 
 	fmt.Println(`list of commands:
-	init			initialize a new doop environment
+	install			install Doop environment
+	init			initialize a new Doop project
 	list			list all the objects (databases/branches)
 	help			print this message`)
 
@@ -61,10 +62,11 @@ func main() {
 	}
 	switch args[1] {
 	case "init":
-		fmt.Println("Initializing...")
 		initialize(doop, args[2:])
 	case "list":
 		list(doop, args[2:])
+	case "install":
+		doop.Install(args[2:])
 	default:
 		fmt.Errorf("Invalid command: %s", os.Args[1])
 	}
