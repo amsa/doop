@@ -54,17 +54,17 @@ Representing `B[i].T[j]` by graph, it looks like:
 
 ###Schema and Roles of Companion Sections
 
-* Snapshot is original table when branch is created;
-* HSection has same schema as Snapshot
-* VSection's schema contains newly-added columns in this branch as well as a foreign key to Snapshot; Snapshot and VSection have 1-to-1 relation.
-* CSection has same schema as VSection; CSection has 1-to-1 relation to HSection and references HSection's primary key and set to `ON DELETE CASCADE`.
-* RDel: the only column in RDel in the foreign key referencing primary key of Snapshot.
-* CDel: only column in CDel, it's string type, contains the name of deleted columns in Snapshot. 
+* `Snapshot` is original table when branch is created;
+* `HSection` has same schema as `Snapshot`
+* `VSection`'s schema contains newly-added columns in this branch as well as a foreign key pointing to `Snapshot`; `Snapshot` and `VSection` have 1-to-1 relation.
+* `CSection` has same schema as `VSection`; `CSection` has 1-to-1 relation to `HSection` and references `HSection` and set to `ON DELETE CASCADE`.
+* `RDel`: the only column in `RDel` in the foreign key referencing primary key of `Snapshot`.
+* `CDel`: only column in `CDel`, it's String type, contains the name of deleted columns in `Snapshot`. 
 
 ###Terms We Use
 
-* Columns in Snapshot is `snapshot_columns`.
-* Columns in VSection, excluding the foreign key pointing to the row in snapshot, are `new_columns`.
+* Columns in `Snapshot` is `snapshot_columns`.
+* Columns in `VSection`, excluding the foreign key pointing to `Snapshot`, are `new_columns`.
 * Columns in `CDel`'s rows, we call them `phantom_columns`.
 * Columns in `snapshot_columns` excluding `phantom_columns`, we call them `concrete_snapshot_columns`.
 
@@ -96,13 +96,14 @@ In `B[i]`, we issue the statement:
 
 Basically, we have:
 
-* `hsection_values`: values for `snapshot_columns`; added NULL for values for `phantom_columns`; 
-* `csection_values`: values for `new_columns` and the primary key of this record.
+* `hsection_values`: values for `snapshot_columns`;
+* `csection_values`: values for `new_columns`;
+* `key_value`: value of the primary key of this record 
 
 Then we rewrite the statement into:
         
-    INSERT INTO hsection VALUES (hsection_values);
-    INSERT INTO csection VALUES (csection_values);
+    INSERT INTO hsection (snapshot_columns) VALUES (hsection_values);
+    INSERT INTO csection (key, new_columns) VALUES (key_value, csection_values);
 
 ###Add new columns
 In `B[i]`, we issue the statement:
