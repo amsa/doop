@@ -71,6 +71,26 @@ Representing `B[i].T[j]` by graph, it looks like:
 * Columns in `complete_schema` excluding `phantom_columns`, we call them `concrete_schema`.
 
 ##Write on `B[i].T[j]`
+
+###Patterns We can reuse
+
+    ;this gives us all valid rows in snapshot with new columns
+    ;we call it valid_upper_section
+    SELECT concrete_snapshot_columns, new_columns FROM 
+    snapshot 
+    NATURAL INNER JOIN 
+    vsection
+    WHERE 
+    concrete_snapshot_columns.key NOT IN
+    (SELECT * FROM rdel);
+
+    ;this gives us all valid rows in hsection with csection
+    ;we call it valid_lower_section
+    SELECT concrete_snapshot_columns, new_columns FROM
+    hsection
+    NATURAL INNER JOIN
+    csection;
+
 ###Insert new records
 In `B[i]`, we issue the statement: 
 
@@ -105,11 +125,7 @@ It becomes
 
     ;mark rows in snapshot
     INSERT INTO rdel SELECT key FROM
-    (
-        (SELECT concrete_snapshot_columns FROM snapshot) 
-        NATURAL INNER JOIN vsection
-        INNER JOIN rdel ON vsection.key != rdel.key
-    )
+    valid_upper_section                     ;see the reusable patterns above
     WHERE iampredicate;
     
     ;delete rows in hsection
@@ -117,10 +133,7 @@ It becomes
     DELETE FROM hsection WHERE hsection.key IN
     (
         SELECT key FROM 
-        (
-            (SELECT concrete_snapshot_columns FROM hsection) 
-            NATURAL INNER JOIN csection
-        )
+        valid_lower_section
         WHERE iampredicate;
     )
     
@@ -134,46 +147,41 @@ In `B[i]`, we issue the statement:
 We rewrite the statement into:
     
     ;======= update rows in hsection and csection =======
-    SELECT key INTO updated_non_snapshot_rows FROM 
-    (
-        (SELECT concrete_snapshot_columns FROM hsection) 
-        NATURAL INNER JOIN csection
-    )
+    SELECT key INTO affected_lower_section FROM 
+        valid_lower_section
     WHERE iampredicate;
 
     ;update hsection
     UPDATE hsection SET column1=value1,...,column_i=value_i WHERE key IN 
-        (SELECT * FROM updated_non_snapshot_rows);
+        (SELECT * FROM affected_lower_section);
 
     ;update csection
     UPDATE csection SET columni_(i+1)=value_(i+1),...,column_n=value_n WHERE key IN 
-        (SELECT * FROM updated_non_snapshot_rows);
+        (SELECT * FROM affected_lower_section);
 
     ;======= done =======
 
     ;======= update rows in snapshot ========
     ;find out rows affected in snapshot
-    SELECT concrete_snapshot_columns AS proper_names, new_columns into updated_snapshot_rows
-        FROM snapshot 
-        NATURAL INNER JOIN vsection
-        INNER JOIN rdel ON vsection.key != rdel.key
+    SELECT * INTO affected_upper_section
+        valid_upper_section
     WHERE iampredicate;
 
     ;mark rows affected in snapshot
     INSERT INTO rdel
-    SELECT key FROM updated_snapshot_rows;
+    SELECT key FROM affected_upper_section;
 
     ;apply the update for rows in snapshot
-    UPDATE updated_snapshot_rows SET column1=value1,column2=value2,...; 
+    UPDATE affected_upper_section SET column1=value1,column2=value2,...; 
 
     ;insert hsection 
     INSERT INTO hsection
     (concrete_snapshot_columns) 
-    SELECT concrete_snapshot_columns FROM updated_snapshot_rows;
+    SELECT concrete_snapshot_columns FROM affected_upper_section;
 
     ;insert the vsection 
     INSERT INTO vsection 
-    SELECT primary_key, new_columns FROM updated_snapshot_rows;  
+    SELECT primary_key, new_columns FROM affected_upper_section;  
     ;====== done ======
     
 
@@ -200,15 +208,11 @@ In `B[i]`, given query like:
 ###Reconstruct `B[i].T[j]`
 We can reassemble `t` by:
 
-        (SELECT concrete_snapshot_columns, new_columns FROM hsection 
-        NATURAL INNER JOIN csection)
+        (valid_upper_section)
             UNION
-        (SELECT concrete_snapshot_columns, new_columns FROM snapshot
-        NATURAL INNER JOIN vsection
-        INNER JOIN rdel ON vsection.key != rdel.key)
+        (valid_lower_section);
 
 Then we can evaluate the query on `t`. 
-
         
 
 ##Branch Creation
