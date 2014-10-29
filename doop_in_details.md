@@ -6,8 +6,8 @@
 Doop provides git-like branches for data on database level.
 
 ##Data In Doop
-Like all RDBMS, data in doop is organized by tables which contain fields and rows. 
-Besides that, Doop provides another layout of abstraction: branch.
+Like all RDBMS, data in Doop is organized by tables which contain fields and rows. 
+Besides that, Doop provides another layer of abstraction: branch.
 
 A database can have different branches such that in different branch, 
 data and schema of tables can be different; also, you can merge the data/scheme from different branches into one.
@@ -17,7 +17,7 @@ To address the mechanism, assuming we already have a database, we have following
 * `B[i]` denotes branch `i` of database.
 * `B[i].T[j]` denotes table `j` in branch `i`; this is the table can be seen by users.
 * `B[i].Snapshot[j]` denotes snapshot of table `j` in branch `i`.
-* `B[i].HSection[j]` denotes the `horizonal section` of table `j` in branch `i`.
+* `B[i].HSection[j]` denotes the `horizontal section` of table `j` in branch `i`.
 * `B[i].VSection[j]` denotes the `vertical section` of table `j` in branch `i`.
 * `B[i].CSection[j]` denotes the `cross section` of table `j` in branch `i`.
 * `B[i].RDel[j]` denotes the deleted rows' primary keys in table `j` in branch `i`.
@@ -32,22 +32,22 @@ Write(insert, delete, update rows, add and drop columns) operations on `B[i].T[j
 to `B[i].HSection[j]` as well as other companion sections; and when there is queries on `B[i].T[j]`, 
 we reassemble `B[i].T[j]` from its companion sections. 
 
-Representing `B[i].T[j]` by graph, it looks like:
+`B[i].T[j]` would look like the following:
 
-    ---------------------
-    |               | V |
-    |  Snapshot     | S |
-    |               |   |
-    |               |   |
-    |               |   |
-    |               |   |
-    |               |   |
-    |               |   |
-    |               |   |
-    |---------------|---|
-    |               | C |
-    |  HS           | S |
-    |---------------|---|
+    ----------------------
+    |               |    |
+    |  Snapshot     | VS |
+    |               |    |
+    |               |    |
+    |               |    |
+    |               |    |
+    |               |    |
+    |               |    |
+    |               |    |
+    |---------------|----|
+    |               |    |
+    |  HS           | CS |
+    |---------------|----|
 
     RDel: rows deleted in snapshot
     CDel: columns deleted in snapshot
@@ -60,6 +60,7 @@ Representing `B[i].T[j]` by graph, it looks like:
 * `CSection` has same schema as `VSection`; `CSection` has 1-to-1 relation to `HSection` and references `HSection` and set to `ON DELETE CASCADE`.
 * `RDel`: the only column in `RDel` in the foreign key referencing primary key of `Snapshot`.
 * `CDel`: only column in `CDel`, it's String type, contains the name of deleted columns in `Snapshot`. 
+
 
 ###Terms We Use
 
