@@ -7,8 +7,8 @@ import (
 
 type Adapter interface {
 	Close() (bool, error)
-	Query(sql string, args ...interface{}) (*sql.Rows, error)
-	Exec(sql string, args ...interface{}) (sql.Result, error)
+	Query(sql string) (*sql.Rows, error)
+	Exec(sql string) (sql.Result, error)
 }
 
 func GetAdapter(dsn string) Adapter {
