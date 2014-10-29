@@ -1,11 +1,15 @@
 package core
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestConfig(t *testing.T) {
 	doop := GetDoop()
-	doop.getConfig()
-	if doop.config.Database.DSN == "" {
+	cfg := doop.getConfig()
+	fmt.Println(cfg)
+	if cfg.Database.DSN == "" {
 		t.Fatalf("No DSN set or Doop not installed.")
 	}
 }

@@ -27,7 +27,7 @@ func initialize(doop *core.Doop, args []string) {
 	}
 	_, err := doop.TrackDb(args[0], args[1])
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("Error while initializing: " + err.Error())
 	}
 }
 
