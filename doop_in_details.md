@@ -225,3 +225,8 @@ let's give it a name `s1`, then we create a branch `B[i]` and a new `B[i-1]` suc
 
 When me merge `B[i-1]` to `B[i]`: we union their corresponding companion sections. 
 If duplicate keys or column names occur during union, that means conflict which requires resolution.
+
+
+#Versioning
+
+One simple way to keep track of versioning is to treat each query as one operation (a transaction can also be treated as one single operation). Then we can increment the version number for each record that the operation is applied to. By default, all the snapshot rows have version 0. Any new row added to `HSection` will have version 1, and all the subsequent operations on the rows in this section will increment the version number. Version column can be added either in a metadata table for each table or can be added to `VSection`.
