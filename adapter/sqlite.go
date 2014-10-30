@@ -21,12 +21,12 @@ func (sqliteDb *SQLite) Close() (bool, error) {
 	return true, sqliteDb.db.Close()
 }
 
-func (sqliteDb *SQLite) Query(sql string, args ...interface{}) (*sql.Rows, error) {
+func (sqliteDb *SQLite) Query(sql string) (*sql.Rows, error) {
 	//no branch involved, simply return the query on base table
 	return sqliteDb.db.Query(sql)
 }
 
-func (sqliteDb *SQLite) Exec(sql string, args ...interface{}) (sql.Result, error) {
+func (sqliteDb *SQLite) Exec(sql string) (sql.Result, error) {
 	return sqliteDb.db.Exec(sql)
 }
 
