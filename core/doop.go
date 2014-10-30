@@ -6,21 +6,22 @@ package core
 */
 
 import (
+	"bufio"
 	"errors"
-	"fmt"
+	"io/ioutil"
 	"os"
+	"os/user"
 	"strings"
 
 	"github.com/amsa/doop/adapter"
-
-	"code.google.com/p/gcfg"
 
 	//_ "github.com/mattn/go-sqlite3"
 )
 
 const (
-	DOOP_DIRNAME   = ".doop"
-	DOOP_CONF_FILE = "config"
+	DOOP_DIRNAME      = ".doop"
+	DOOP_CONF_FILE    = "config"
+	DOOP_MAPPING_FILE = "doopm"
 )
 
 type Doop struct {
@@ -39,8 +40,8 @@ func GetDoop() *Doop {
 	d := &Doop{}
 	// initialize Doop object
 	d.initDoopDir()
-	d.initConfig()
-	d.adapter = adapter.GetAdapter(d.config.Database.DSN)
+	//d.initConfig()
+	//d.adapter = adapter.GetAdapter(d.config.Database.DSN)
 	return d
 }
 
@@ -48,46 +49,39 @@ func GetDoop() *Doop {
 ************************************
  */
 
-// initDoopDir returns the path to home directory of Doop
-func (doop *Doop) initDoopDir() string {
+// initDoopDir initializes Doop home directory and creates it if it does not exist
+func (doop *Doop) initDoopDir() {
 	if doop.homeDir != "" {
-		return doop.homeDir
+		return
 	}
-	doop.homeDir = getDoopHome(DOOP_DIRNAME)
+	currentUser, err := user.Current()
+	handleError(err)
+	doop.homeDir = strings.Join([]string{currentUser.HomeDir, DOOP_DIRNAME}, string(os.PathSeparator))
 
 	if _, err := os.Stat(doop.homeDir); err != nil {
-		fmt.Println("Doop environment is not installed yet.")
-		os.Exit(1)
+		doop.install()
 	}
-	return doop.homeDir
 }
 
-func (doop *Doop) initConfig() DoopConfig {
-	if doop.config.Database.DSN != "" {
-		return doop.config
-	}
-	handleError(gcfg.ReadFileInto(&doop.config, doop.getConfigFile()))
-	return doop.config
-}
+// initConfig loads and parses Doop configurations
+//func (doop *Doop) initConfig() {
+//if doop.config.Database.DSN != "" {
+//return
+//}
+//handleError(gcfg.ReadFileInto(&doop.config, doop.getConfigFile()))
+//}
 
-func (doop *Doop) getConfigFile() string {
-	return strings.Join([]string{doop.homeDir, DOOP_CONF_FILE}, string(os.PathSeparator))
-}
+//func (doop *Doop) getConfigFile() string {
+//return strings.Join([]string{doop.homeDir, DOOP_CONF_FILE}, string(os.PathSeparator))
+//}
 
-// dbIdExists checks whether a database is being tracked or not
-func (doop *Doop) dbIdExists(dbId string) bool {
-	q := `SELECT id FROM doop_mapping WHERE hash = '%s';`
-	rows, err := doop.adapter.Query(fmt.Sprintf(q, dbId))
-	if err != nil {
-		panic(err)
-	}
-	return rows.Next()
+func (doop *Doop) getDbMappingFile() string {
+	return strings.Join([]string{doop.homeDir, DOOP_MAPPING_FILE}, string(os.PathSeparator))
 }
 
 // setDbId returns the identifier (hash) for the given database name
-func (doop *Doop) setDbId(dbName string, dbId string) (bool, error) {
-	q := `INSERT INTO doop_mapping (dsn, db_name, hash) VALUES ('%s', '%s', '%s');`
-	_, err := doop.adapter.Exec(fmt.Sprintf(q, doop.config.Database.DSN, dbName, dbId))
+func (doop *Doop) setDbId(dbName string, dbId string, dsn string) (bool, error) {
+	err := ioutil.WriteFile(doop.getDbMappingFile(), []byte(dbId+","+dbName+","+dsn+"\n"), 0644)
 	if err != nil {
 		return false, err
 	}
@@ -98,26 +92,28 @@ func (doop *Doop) setDbId(dbName string, dbId string) (bool, error) {
 ************************************
  */
 // getDbIdMap returns the mapping of all the database names with their identifiers
-func (doop *Doop) GetDbIdMap() (map[string]string, error) {
-	m := make(map[string]string)
-	rows, err := doop.adapter.Query(`SELECT db_name, hash FROM doop_mapping;`)
+func (doop *Doop) GetDbIdMap() map[string]*DoopDbInfo {
+	m := make(map[string]*DoopDbInfo)
+	file, err := os.OpenFile(doop.getDbMappingFile(), os.O_CREATE|os.O_RDONLY, 0644)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
-	for rows.Next() {
-		var name string
-		var hash string
-		rows.Scan(&name, &hash)
-		m[name] = hash
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		lArray := strings.Split(line, ",")
+		m[lArray[0]] = &DoopDbInfo{Name: lArray[1], DSN: lArray[2]}
 	}
-	return m, nil
+	return m
 }
 
 // TrackDb initializes the database directory with a given identifier (hash)
 func (doop *Doop) TrackDb(dbName string, dsn string) (bool, error) {
 	dbId := generateDbId(dsn)
-	if !doop.dbIdExists(dbId) {
-		_, e := doop.setDbId(dbName, dbId)
+	if _, ok := doop.GetDbIdMap()[dbId]; !ok {
+		_, e := doop.setDbId(dbName, dbId, dsn)
 		if e != nil {
 			return false, e
 		}

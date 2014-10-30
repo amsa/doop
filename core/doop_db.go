@@ -1,5 +1,10 @@
 package core
 
+type DoopDbInfo struct {
+	DSN  string
+	Name string
+}
+
 type DoopDb interface {
 	//Methods of DoopDB interface
 	CreateBranch(branchName string, baseBranch string) (bool, error)
