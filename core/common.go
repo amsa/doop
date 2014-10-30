@@ -31,5 +31,6 @@ func handleError(err error) {
 // generaeDbId generates the unique identifier for the given DSN
 func generateDbId(dsn string) string {
 	h := sha1.New()
-	return fmt.Sprintf("%x", h.Sum([]byte(dsn)))
+	h.Write([]byte(dsn))
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
