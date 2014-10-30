@@ -29,20 +29,3 @@ func (sqliteDb *SQLite) Query(sql string) (*sql.Rows, error) {
 func (sqliteDb *SQLite) Exec(sql string) (sql.Result, error) {
 	return sqliteDb.db.Exec(sql)
 }
-
-// TODO: The following methods should be part of Doop not SQLite
-//func (sqliteDb *SQLite) CreateBranch(branchName string, baseBranch string) (bool, error) {
-//return false, nil
-//}
-
-//func (sqliteDb *SQLite) RemoveBranch(branchName string) (bool, error) {
-//return false, nil
-//}
-
-//func (sqliteDb *SQLite) MergeBranch(to string, from string) (bool, error) {
-//return false, nil
-//}
-
-//func (sqliteDb *SQLite) ListBranches() ([]string, error) {
-//return nil, nil
-//}

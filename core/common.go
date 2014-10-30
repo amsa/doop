@@ -28,6 +28,12 @@ func handleError(err error) {
 	}
 }
 
+func handleErrorAny(_ interface{}, err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
 // generaeDbId generates the unique identifier for the given DSN
 func generateDbId(dsn string) string {
 	h := sha1.New()
