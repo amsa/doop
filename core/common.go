@@ -4,9 +4,6 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"log"
-	"os"
-	"os/user"
-	"strings"
 )
 
 var debug bool = true
@@ -31,16 +28,15 @@ func handleError(err error) {
 	}
 }
 
+func handleErrorAny(_ interface{}, err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
 // generaeDbId generates the unique identifier for the given DSN
 func generateDbId(dsn string) string {
 	h := sha1.New()
-	return fmt.Sprintf("%x", h.Sum([]byte(dsn)))
-}
-
-func getDoopHome(dir string) string {
-	currentUser, err := user.Current()
-	if err != nil {
-		log.Fatal(err)
-	}
-	return strings.Join([]string{currentUser.HomeDir, dir}, string(os.PathSeparator))
+	h.Write([]byte(dsn))
+	return fmt.Sprintf("%x", h.Sum(nil))
 }

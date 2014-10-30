@@ -54,20 +54,3 @@ func (sqliteDb *SQLite) GetTables() ([]string, error) {
 	}
 	return ret, nil
 }
-
-// TODO: The following methods should be part of Doop not SQLite
-//func (sqliteDb *SQLite) CreateBranch(branchName string, baseBranch string) (bool, error) {
-//return false, nil
-//}
-
-//func (sqliteDb *SQLite) RemoveBranch(branchName string) (bool, error) {
-//return false, nil
-//}
-
-//func (sqliteDb *SQLite) MergeBranch(to string, from string) (bool, error) {
-//return false, nil
-//}
-
-//func (sqliteDb *SQLite) ListBranches() ([]string, error) {
-//return nil, nil
-//}

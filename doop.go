@@ -11,7 +11,6 @@ func help() {
 	fmt.Println("doop [command] [options]")
 
 	fmt.Println(`list of commands:
-	install			install Doop environment
 	init			initialize a new Doop project
 	list			list all the objects (databases/branches)
 	help			print this message`)
@@ -32,17 +31,20 @@ func initialize(doop *core.Doop, args []string) {
 }
 
 func list(doop *core.Doop, args []string) {
-	m, _ := doop.GetDbIdMap()
+	m := doop.GetDbIdMap()
 	if len(m) == 0 {
 		return
 	}
 	if len(args) == 0 { // show the list of the databases
 		fmt.Println("List of databases:")
-		for db, _ := range m {
-			fmt.Println("    " + db)
+		for _, dbInfo := range m {
+			fmt.Println("    " + dbInfo.Name)
 		}
 	} else { // show the list of branches for the given database
-		//TODO: get list of branches
+		fmt.Printf("List of branches for `%s`:", args[0])
+		for _, branch := range doop.ListBranches(args[0]) {
+			fmt.Println("    " + branch)
+		}
 	}
 }
 
@@ -65,8 +67,6 @@ func main() {
 		initialize(doop, args[2:])
 	case "list":
 		list(doop, args[2:])
-	case "install":
-		doop.Install(args[2:])
 	default:
 		fmt.Errorf("Invalid command: %s", os.Args[1])
 	}
