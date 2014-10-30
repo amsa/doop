@@ -19,13 +19,12 @@ To address the mechanism, assuming we already have a database, we have following
 * `B[i].Snapshot[j]` denotes snapshot of table `j` in branch `i`.
 * `B[i].HSection[j]` denotes the `horizontal section` of table `j` in branch `i`.
 * `B[i].VSection[j]` denotes the `vertical section` of table `j` in branch `i`.
-* `B[i].CSection[j]` denotes the `cross section` of table `j` in branch `i`.
 * `B[i].RDel[j]` denotes the deleted rows' primary keys in table `j` in branch `i`.
 * `B[i].CDel[j]` denotes the dropped columns' names in table `j` in branch `i`.
 
 `B[i].T[j]` is the table seen by user. It's a logical table which means that data is 
 not physically arranged as how `B[i].T[j]` looks like; instead, data is 
-stored in `B[i].Snapshot[j]`, `B[i].HSection[j]`, `B[i].VSection[j]`, `B[i],CSection[j]`, `B[i].RDel[j]`, `B[i].CDel[j]`, 
+stored in `B[i].Snapshot[j]`, `B[i].HSection[j]`, `B[i].VSection[j]`, `B[i],CSection[j]`, `B[i].RDel[j]`, 
 we call them `companion sections` of `B[i].T[j]`. 
 
 Write(insert, delete, update rows, add and drop columns) operations on `B[i].T[j]` go 
@@ -45,9 +44,9 @@ we reassemble `B[i].T[j]` from its companion sections.
     |               |    |
     |               |    |
     |---------------|----|
-    |               |    |
-    |  HS           | CS |
-    |---------------|----|
+    |                    |
+    |  HS                |
+    |--------------------|
 
     RDel: rows deleted in snapshot
     CDel: columns deleted in snapshot
@@ -57,7 +56,6 @@ we reassemble `B[i].T[j]` from its companion sections.
 * `Snapshot` is original table when branch is created;
 * `HSection` has same schema as `Snapshot`
 * `VSection`'s schema contains newly-added columns in this branch as well as a foreign key pointing to `Snapshot`; `Snapshot` and `VSection` have 1-to-1 relation.
-* `CSection` has same schema as `VSection`; `CSection` has 1-to-1 relation to `HSection` and references `HSection` and set to `ON DELETE CASCADE`.
 * `RDel`: the only column in `RDel` in the foreign key referencing primary key of `Snapshot`.
 * `CDel`: only column in `CDel`, it's String type, contains the name of deleted columns in `Snapshot`. 
 
@@ -86,9 +84,7 @@ we reassemble `B[i].T[j]` from its companion sections.
     ;this gives us all valid rows in hsection with csection
     ;we call it valid_lower_section
     SELECT concrete_snapshot_columns, new_columns FROM
-    hsection
-    NATURAL INNER JOIN
-    csection;
+    hsection;
 
 ###Insert new records
 In `B[i]`, we issue the statement: 
@@ -97,14 +93,13 @@ In `B[i]`, we issue the statement:
 
 Basically, we have:
 
-* `hsection_values`: values for `snapshot_columns`;
-* `csection_values`: values for `new_columns`;
+* `hsection_values`: values for `concrete_snapshot_columns`;
+* `new_column_values`: values for `new_columns`;
 * `key_value`: value of the primary key of this record 
 
 Then we rewrite the statement into:
         
-    INSERT INTO hsection (snapshot_columns) VALUES (hsection_values);
-    INSERT INTO csection (key, new_columns) VALUES (key_value, csection_values);
+    INSERT INTO hsection (concrete_snapshot_columns, new_columns) VALUES (hsection_values, new_column_values);
 
 ###Add new columns
 In `B[i]`, we issue the statement:
@@ -114,7 +109,6 @@ In `B[i]`, we issue the statement:
 The statement above becomes
 
     ALTER TABLE vsection ADD column_name column_type;
-    ALTER TABLE csection ADD column_name column_type;
 
 ###Delete rows
 In `B[i]`, we issue statement:
@@ -129,7 +123,6 @@ It becomes
     WHERE iampredicate;
     
     ;delete rows in hsection
-    ;note that records in csection will be deleted automatically because of cascade deletion.
     DELETE FROM hsection WHERE hsection.key IN
     (
         SELECT key FROM 
@@ -152,11 +145,7 @@ We rewrite the statement into:
     WHERE iampredicate;
 
     ;update hsection
-    UPDATE hsection SET column1=value1,...,column_i=value_i WHERE key IN 
-        (SELECT * FROM affected_lower_section);
-
-    ;update csection
-    UPDATE csection SET columni_(i+1)=value_(i+1),...,column_n=value_n WHERE key IN 
+    UPDATE hsection SET column1=value1,...,column_n=value_n WHERE key IN 
         (SELECT * FROM affected_lower_section);
 
     ;======= done =======
@@ -176,12 +165,8 @@ We rewrite the statement into:
 
     ;insert hsection 
     INSERT INTO hsection
-    (concrete_snapshot_columns) 
-    SELECT concrete_snapshot_columns FROM affected_upper_section;
-
-    ;insert the vsection 
-    INSERT INTO vsection 
-    SELECT primary_key, new_columns FROM affected_upper_section;  
+    (concrete_snapshot_columns, new_columns) 
+    SELECT concrete_snapshot_columns, new_columns FROM affected_upper_section;
     ;====== done ======
     
 
@@ -194,7 +179,6 @@ We rewrite it to:
 
     if column_name in vsection
         ALTER TABLE vsection DROP COLUMN column_name; 
-        ALTER TABLE csection DROP COLUMN column_name; 
     else
         INSERT INTO cdel_j VALUES (column_name); 
     endif
@@ -227,7 +211,3 @@ let's give it a name `s1`, then we create a branch `B[i]` and a new `B[i-1]` suc
 When me merge `B[i-1]` to `B[i]`: we union their corresponding companion sections. 
 If duplicate keys or column names occur during union, that means conflict which requires resolution.
 
-
-#Versioning
-
-One simple way to keep track of versioning is to treat each query as one operation (a transaction can also be treated as one single operation). Then we can increment the version number for each record that the operation is applied to. By default, all the snapshot rows have version 0. Any new row added to `HSection` will have version 1, and all the subsequent operations on the rows in this section will increment the version number. Version column can be added either in a metadata table for each table or can be added to `VSection`.
