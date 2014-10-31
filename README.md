@@ -28,10 +28,10 @@ Administration commands:
 ```
 - doop init <alias> <DSN> (e.g. doop init testdb sqlite://mytestdb.db)
 - doop list  [<alias>] (e.g. doop list [testdb])  -- if <alias> is passed the list of branches will be returned
-- doop branch <alias> <new> <from> (e.g. doop branch testdb myfork test)
-- doop merge  <alias> <to> <from> (e.g. doop merge testdb test myfork)
 - doop rm -d <alias>  (e.g. doop rm -d testdb)
 - doop rm -b <branch@alias> (e.g. doop rm -b myfork@testdb)
+- doop branch <alias> <new> <from> (e.g. doop branch testdb myfork test)
+- doop merge  <alias> <to> <from> (e.g. doop merge testdb test myfork)
 - doop stats [<alias>] (e.g. doop stats [testdb])
 - doop export [<branch@alias>] (e.g. doop export testdb@myfork)
 ```

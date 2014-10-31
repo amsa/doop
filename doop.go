@@ -50,6 +50,21 @@ func list(doop *core.Doop, args []string) {
 	}
 }
 
+func remove(doop *core.Doop, args []string) {
+	if len(args) != 2 {
+		fmt.Println("Too few arguments passed. usage: rm -d|-b <alias> (e.g. doop rm -d mydb)")
+		return
+	}
+	if args[0] == "-d" {
+		doop.UntrackDb(args[1])
+		fmt.Println("Database removed from Doop: " + args[1])
+	} else if args[0] == "-b" {
+		// TODO: handle removing branch
+	} else {
+		fmt.Println("Invalid option passed to rm: " + args[0])
+	}
+}
+
 func main() {
 	doop := core.GetDoop()
 	var args []string
@@ -69,6 +84,8 @@ func main() {
 		initialize(doop, args[2:])
 	case "list":
 		list(doop, args[2:])
+	case "rm":
+		remove(doop, args[2:])
 	default:
 		fmt.Errorf("Invalid command: %s", os.Args[1])
 	}

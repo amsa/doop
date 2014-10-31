@@ -9,6 +9,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/user"
 	"strings"
@@ -23,12 +24,15 @@ const (
 	DOOP_CONF_FILE      = "config"
 	DOOP_MAPPING_FILE   = "doopm"
 	DOOP_DEFAULT_BRANCH = "master"
+
+	DOOP_TABLE_BRANCH = "__branch"
 )
 
 type Doop struct {
 	homeDir string
 	//config  DoopConfig
-	adapter adapter.Adapter
+	adapter   adapter.Adapter
+	dbInfoMap map[string]*DoopDbInfo
 }
 
 type DoopConfig struct {
@@ -80,6 +84,22 @@ func (doop *Doop) initAdapter(dsn string) {
 //return strings.Join([]string{doop.homeDir, DOOP_CONF_FILE}, string(os.PathSeparator))
 //}
 
+func (doop *Doop) getDbInfoByDbName(dbName string) *DoopDbInfo {
+	var info *DoopDbInfo = nil
+	for _, dbInfo := range doop.GetDbIdMap() {
+		if dbInfo.Name == dbName {
+			info = dbInfo
+			break
+		}
+	}
+	if info == nil {
+		fmt.Println("Could not find database: " + dbName)
+		os.Exit(1)
+	}
+
+	return info
+}
+
 func (doop *Doop) getDbMappingFile() string {
 	return strings.Join([]string{doop.homeDir, DOOP_MAPPING_FILE}, string(os.PathSeparator))
 }
@@ -93,12 +113,25 @@ func (doop *Doop) setDbId(dbName string, dbId string, dsn string) (bool, error) 
 	return true, nil
 }
 
+func (doop *Doop) removeDbId(dbId string) (bool, error) {
+	newMap := ""
+	delete(doop.dbInfoMap, dbId)
+	for _, v := range doop.dbInfoMap {
+		newMap += v.Hash + "," + v.Name + "," + v.DSN + "\n"
+	}
+	err := ioutil.WriteFile(doop.getDbMappingFile(), []byte(newMap), 0644)
+	return err == nil, err
+}
+
 /* Public methods:
 ************************************
  */
 // getDbIdMap returns the mapping of all the database names with their identifiers
 func (doop *Doop) GetDbIdMap() map[string]*DoopDbInfo {
-	m := make(map[string]*DoopDbInfo)
+	if doop.dbInfoMap != nil {
+		return doop.dbInfoMap
+	}
+	doop.dbInfoMap = make(map[string]*DoopDbInfo)
 	file, err := os.OpenFile(doop.getDbMappingFile(), os.O_CREATE|os.O_RDONLY, 0644)
 	handleError(err)
 	defer file.Close()
@@ -107,9 +140,9 @@ func (doop *Doop) GetDbIdMap() map[string]*DoopDbInfo {
 	for scanner.Scan() {
 		line := scanner.Text()
 		lArray := strings.Split(line, ",")
-		m[lArray[0]] = &DoopDbInfo{Name: lArray[1], DSN: lArray[2]}
+		doop.dbInfoMap[lArray[0]] = &DoopDbInfo{Hash: lArray[0], Name: lArray[1], DSN: lArray[2]}
 	}
-	return m
+	return doop.dbInfoMap
 }
 
 // TrackDb initializes the database directory with a given identifier (hash)
@@ -123,13 +156,13 @@ func (doop *Doop) TrackDb(dbName string, dsn string) (bool, error) {
 			return false, e
 		}
 		// Create branch table to store the branches
-		handleErrorAny(doop.adapter.Exec(`CREATE TABLE __branch (
+		handleErrorAny(doop.adapter.Exec(`CREATE TABLE ` + DOOP_TABLE_BRANCH + ` (
 			id integer NOT NULL PRIMARY KEY,
 			name     text,
 			parent   text,
 			metadata text
 		);`))
-		handleErrorAny(doop.adapter.Exec(`CREATE UNIQUE INDEX __branch_name_idx ON __branch (name);`))
+		handleErrorAny(doop.adapter.Exec(`CREATE UNIQUE INDEX __branch_name_idx ON ` + DOOP_TABLE_BRANCH + ` (name);`))
 
 		// Create default branch
 		_, e = doop.CreateBranch(DOOP_DEFAULT_BRANCH, "")
@@ -150,6 +183,11 @@ func (doop *Doop) ListDbs() ([]string, error) {
 //}
 
 func (doop *Doop) UntrackDb(dbName string) (bool, error) {
+	info := doop.getDbInfoByDbName(dbName)
+	doop.initAdapter(info.DSN)
+	doop.removeDbId(info.Hash)
+	handleErrorAny(doop.adapter.Exec(`DROP INDEX IF EXISTS __branch_name_idx;`))
+	handleErrorAny(doop.adapter.Exec(`DROP TABLE ` + DOOP_TABLE_BRANCH + `;`))
 	return false, nil
 }
 
@@ -158,8 +196,7 @@ func (doop *Doop) CreateBranch(branchName string, parentBranch string) (bool, er
 		return false, errors.New("Parent branch name is not specified.")
 	}
 	handleErrorAny(doop.adapter.
-		Exec(fmt.Sprintf(`INSERT INTO __branch (name, parent, metadata) VALUES ('%s', '%s', '{}')`,
-		branchName, parentBranch)))
+		Exec(`INSERT INTO `+DOOP_TABLE_BRANCH+` (name, parent, metadata) VALUES (?, ?, '{}')`, branchName, parentBranch))
 
 	// TODO: create branch specific tables: __{branch}_vdel, __{branch}_hdel, __{branch}_v, __{branch}_h
 	return true, nil
@@ -174,22 +211,10 @@ func (doop *Doop) MergeBranch(to string, from string) (bool, error) {
 }
 
 func (doop *Doop) ListBranches(dbName string) []string {
-	mapping := doop.GetDbIdMap()
-	dsn := ""
-	for _, dbInfo := range mapping {
-		if dbInfo.Name == dbName {
-			dsn = dbInfo.DSN
-			break
-		}
-	}
-	if dsn == "" {
-		fmt.Println("Could not find database: " + dbName)
-		os.Exit(1)
-	}
-	doop.initAdapter(dsn)
+	doop.initAdapter(doop.getDbInfoByDbName(dbName).DSN)
 
 	rt := make([]string, 1)
-	rows, err := doop.adapter.Query(`SELECT name FROM __branch;`)
+	rows, err := doop.adapter.Query(`SELECT name FROM ` + DOOP_TABLE_BRANCH + `;`)
 	handleError(err)
 	for rows.Next() {
 		var name string
