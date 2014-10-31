@@ -25,7 +25,9 @@ func initialize(doop *core.Doop, args []string) {
 		return
 	}
 	_, err := doop.TrackDb(args[0], args[1])
-	if err != nil {
+	if err == nil {
+		fmt.Println("Initialized new Doop environment for " + args[0])
+	} else {
 		fmt.Println("Error while initializing: " + err.Error())
 	}
 }

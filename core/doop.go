@@ -9,7 +9,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/user"
 	"strings"
@@ -87,10 +86,10 @@ func (doop *Doop) getDbMappingFile() string {
 
 // setDbId returns the identifier (hash) for the given database name
 func (doop *Doop) setDbId(dbName string, dbId string, dsn string) (bool, error) {
-	err := ioutil.WriteFile(doop.getDbMappingFile(), []byte(dbId+","+dbName+","+dsn+"\n"), 0644)
-	if err != nil {
-		return false, err
-	}
+	file, err := os.OpenFile(doop.getDbMappingFile(), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	handleError(err)
+	defer file.Close()
+	file.WriteString(dbId + "," + dbName + "," + dsn + "\n")
 	return true, nil
 }
 
@@ -146,9 +145,9 @@ func (doop *Doop) ListDbs() ([]string, error) {
 	return nil, nil
 }
 
-func (doop *Doop) GetDb(dbName string) (*DoopDb, error) {
-	return nil, nil
-}
+//func (doop *Doop) GetDb(dbName string) (*DoopDb, error) {
+//return nil, nil
+//}
 
 func (doop *Doop) UntrackDb(dbName string) (bool, error) {
 	return false, nil
