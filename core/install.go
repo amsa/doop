@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	. "github.com/amsa/doop/common"
 	"os"
 )
 
@@ -12,7 +13,7 @@ func (doop *Doop) install() {
 	}
 
 	Debug("Doop directory does not exist. Creating doop directory at %s...", doop.homeDir)
-	handleError(os.Mkdir(doop.homeDir, 0755)) // Create Doop home directory
+	HandleError(os.Mkdir(doop.homeDir, 0755)) // Create Doop home directory
 
 	// Create configuration file
 	//defaultConfig := `[database]

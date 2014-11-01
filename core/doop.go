@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/amsa/doop/adapter"
+	. "github.com/amsa/doop/common"
 
 	//_ "github.com/mattn/go-sqlite3"
 )
@@ -26,6 +27,7 @@ const (
 	DOOP_DEFAULT_BRANCH = "master"
 
 	DOOP_TABLE_BRANCH = "__branch"
+	DOOP_MASTER       = "__doop_master"
 )
 
 type Doop struct {
@@ -60,7 +62,7 @@ func (doop *Doop) initDoopDir() {
 		return
 	}
 	currentUser, err := user.Current()
-	handleError(err)
+	HandleError(err)
 	doop.homeDir = strings.Join([]string{currentUser.HomeDir, DOOP_DIRNAME}, string(os.PathSeparator))
 
 	if _, err := os.Stat(doop.homeDir); err != nil {
@@ -83,6 +85,25 @@ func (doop *Doop) initAdapter(dsn string) {
 //func (doop *Doop) getConfigFile() string {
 //return strings.Join([]string{doop.homeDir, DOOP_CONF_FILE}, string(os.PathSeparator))
 //}
+
+func (doop *Doop) getLogicalTables() map[string]string {
+	//find out the name of tables in default branch
+	statement := fmt.Sprintf(`
+		SELECT name, sql FROM %s WHERE branch=? AND type=?
+	`)
+	rows, err := doop.adapter.Query(statement, DOOP_MASTER, "logical_table")
+	HandleErrorAny(rows, err)
+
+	ret := make(map[string]string)
+	for rows.Next() {
+		var name string
+		var sql string
+		err := rows.Scan(&name, &sql)
+		HandleErrorAny(rows, err)
+		ret[name] = sql
+	}
+	return ret
+}
 
 func (doop *Doop) getDbInfoByDbName(dbName string) *DoopDbInfo {
 	var info *DoopDbInfo = nil
@@ -107,7 +128,7 @@ func (doop *Doop) getDbMappingFile() string {
 // setDbId returns the identifier (hash) for the given database name
 func (doop *Doop) setDbId(dbName string, dbId string, dsn string) (bool, error) {
 	file, err := os.OpenFile(doop.getDbMappingFile(), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	handleError(err)
+	HandleError(err)
 	defer file.Close()
 	file.WriteString(dbId + "," + dbName + "," + dsn + "\n")
 	return true, nil
@@ -133,7 +154,7 @@ func (doop *Doop) GetDbIdMap() map[string]*DoopDbInfo {
 	}
 	doop.dbInfoMap = make(map[string]*DoopDbInfo)
 	file, err := os.OpenFile(doop.getDbMappingFile(), os.O_CREATE|os.O_RDONLY, 0644)
-	handleError(err)
+	HandleError(err)
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
@@ -148,21 +169,51 @@ func (doop *Doop) GetDbIdMap() map[string]*DoopDbInfo {
 // TrackDb initializes the database directory with a given identifier (hash)
 func (doop *Doop) TrackDb(dbName string, dsn string) (bool, error) {
 	doop.initAdapter(dsn)
-	dbId := generateDbId(dsn) // Generate the id (hash) from the given DSN
+	dbId := GenerateDbId(dsn) // Generate the id (hash) from the given DSN
 	if _, ok := doop.GetDbIdMap()[dbId]; !ok {
 		// Set mapping for the new database
 		_, e := doop.setDbId(dbName, dbId, dsn)
 		if e != nil {
 			return false, e
 		}
+		// Create doop_master table to store metadata of all tables
+		statement := fmt.Sprintf(`
+			CREATE TABLE %s (
+				id integer NOT NULL PRIMARY KEY,
+				name text,
+				type text,
+				branch text,
+				sql text,
+			)	
+		`, DOOP_MASTER)
+		HandleErrorAny(doop.adapter.Exec(statement))
+
+		//Insert tables in to doop_master
+		tables, err := doop.adapter.GetTables()
+		HandleErrorAny(tables, err)
+
+		for i, table := range tables {
+			schema, err := doop.adapter.GetSchema(table)
+			HandleErrorAny(schema, err)
+			statement = fmt.Sprintf(`
+				INSERT INTO %s VALUES (
+					%i,		
+					%s,
+					%s,
+					%s,
+					%sql,	
+				)	
+			`, i, table, "logical_table", DOOP_DEFAULT_BRANCH, schema)
+		}
+
 		// Create branch table to store the branches
-		handleErrorAny(doop.adapter.Exec(`CREATE TABLE ` + DOOP_TABLE_BRANCH + ` (
+		HandleErrorAny(doop.adapter.Exec(`CREATE TABLE ` + DOOP_TABLE_BRANCH + ` (
 			id integer NOT NULL PRIMARY KEY,
 			name     text,
 			parent   text,
 			metadata text
 		);`))
-		handleErrorAny(doop.adapter.Exec(`CREATE UNIQUE INDEX __branch_name_idx ON ` + DOOP_TABLE_BRANCH + ` (name);`))
+		HandleErrorAny(doop.adapter.Exec(`CREATE UNIQUE INDEX __branch_name_idx ON ` + DOOP_TABLE_BRANCH + ` (name);`))
 
 		// Create default branch
 		_, e = doop.CreateBranch(DOOP_DEFAULT_BRANCH, "")
@@ -186,8 +237,8 @@ func (doop *Doop) UntrackDb(dbName string) (bool, error) {
 	info := doop.getDbInfoByDbName(dbName)
 	doop.initAdapter(info.DSN)
 	doop.removeDbId(info.Hash)
-	handleErrorAny(doop.adapter.Exec(`DROP INDEX IF EXISTS __branch_name_idx;`))
-	handleErrorAny(doop.adapter.Exec(`DROP TABLE ` + DOOP_TABLE_BRANCH + `;`))
+	HandleErrorAny(doop.adapter.Exec(`DROP INDEX IF EXISTS __branch_name_idx;`))
+	HandleErrorAny(doop.adapter.Exec(`DROP TABLE ` + DOOP_TABLE_BRANCH + `;`))
 	return false, nil
 }
 
@@ -195,10 +246,33 @@ func (doop *Doop) CreateBranch(branchName string, parentBranch string) (bool, er
 	if branchName != DOOP_DEFAULT_BRANCH && parentBranch == "" {
 		return false, errors.New("Parent branch name is not specified.")
 	}
-	handleErrorAny(doop.adapter.
+	HandleErrorAny(doop.adapter.
 		Exec(`INSERT INTO `+DOOP_TABLE_BRANCH+` (name, parent, metadata) VALUES (?, ?, '{}')`, branchName, parentBranch))
 
-	// TODO: create branch specific tables: __{branch}_vdel, __{branch}_hdel, __{branch}_v, __{branch}_h
+	//get all tables
+	tables := doop.getLogicalTables()
+
+	//create companion tables for each logical table
+	for tableName, schema := range tables {
+		statements := make([]string, 0, 64)
+
+		//need to parse the schema to create h
+		//vdel
+		//TODO: parse schema to get primary key type,
+		//if no primary key, error thrown
+		vdel := fmt.Sprintf(`
+			CREATE TABLE __%s_%s_vdel (
+				%s
+			)	
+		`, branchName, tableName, schema)
+		statements = append(statements, vdel)
+
+		//hdel
+
+		//vsec
+
+		//hsec
+	}
 	return true, nil
 }
 
@@ -215,7 +289,7 @@ func (doop *Doop) ListBranches(dbName string) []string {
 
 	rt := make([]string, 1)
 	rows, err := doop.adapter.Query(`SELECT name FROM ` + DOOP_TABLE_BRANCH + `;`)
-	handleError(err)
+	HandleError(err)
 	for rows.Next() {
 		var name string
 		rows.Scan(&name)
