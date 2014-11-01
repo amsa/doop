@@ -1,8 +1,8 @@
 package adapter
 
 /*
-file: sqlite_test.go
-description: test for sqlite adapter
+file: adapter_test.go
+description: test for adapter adapter
 
 */
 import (
@@ -16,8 +16,8 @@ import (
 
 type SuiteTester struct {
 	suite.Suite
-	sqlite Adapter
-	dsn    string
+	adapter Adapter
+	dsn     string
 }
 
 func (suite *SuiteTester) SetupSuite() {
@@ -49,13 +49,13 @@ func (suite *SuiteTester) SetupSuite() {
 	err := cmd.Run()
 	assert.Nil(suite.T(), err)
 
-	suite.sqlite, err = MakeSQLite(suite.dsn)
+	suite.adapter, err = MakeSQLite(suite.dsn)
 	assert.Nil(suite.T(), err)
 	fmt.Printf("Setup test enviroment...\n")
 }
 
 func (suite *SuiteTester) TearDownSuite() {
-	suite.sqlite.Close()
+	suite.adapter.Close()
 	cmd := exec.Command("rm", "-rf", suite.dsn)
 	err := cmd.Run()
 	assert.Nil(suite.T(), err)
@@ -63,30 +63,33 @@ func (suite *SuiteTester) TearDownSuite() {
 }
 
 func (suite *SuiteTester) TestGetTables() {
-	tables, err := suite.sqlite.GetTables()
+	tables, err := suite.adapter.GetTables()
 	assert.Nil(suite.T(), err)
 	assert.NotEqual(suite.T(), len(tables), 0)
 }
 
 func (suite *SuiteTester) TestGetSchema() {
-	tables, err := suite.sqlite.GetTables()
+	tables, err := suite.adapter.GetTables()
 	assert.Nil(suite.T(), err)
 	for _, table := range tables {
-		_, err := suite.sqlite.GetSchema(table)
+		_, err := suite.adapter.GetSchema(table)
 		assert.Nil(suite.T(), err)
 	}
 }
 
-func (suite *SuiteTester) TestDDL() {
+/*
+create a table, check number of tables, drop the table, check number of tables
+*/
+func (suite *SuiteTester) TestDDLTable() {
 	statement := `CREATE TABLE testDDL ( 
 					id INTEGER PRIMARY KEY, 
 					c1 VARCHAR(10), 
 					c2 VARCHAR(20) 
 				  )`
-	_, err := suite.sqlite.Exec(statement)
+	_, err := suite.adapter.Exec(statement)
 	assert.Nil(suite.T(), err)
 
-	tables, err := suite.sqlite.GetTables()
+	tables, err := suite.adapter.GetTables()
 	assert.Nil(suite.T(), err)
 	assert.Equal(suite.T(), len(tables), 5)
 
@@ -101,22 +104,30 @@ func (suite *SuiteTester) TestDDL() {
 	assert.True(suite.T(), found)
 
 	statement = `DROP TABLE testDDL`
-	_, err = suite.sqlite.Exec(statement)
+	_, err = suite.adapter.Exec(statement)
 	assert.Nil(suite.T(), err)
 
-	tables, err = suite.sqlite.GetTables()
+	tables, err = suite.adapter.GetTables()
 	assert.Nil(suite.T(), err)
 	assert.Equal(suite.T(), len(tables), 4)
 }
+
+/*
+add a column, check schema
+*/
+func (suite *SuiteTester) TestDDLSchema() {
+	//sqlite3 only supports ADD COLUMN
+}
+
 func (suite *SuiteTester) TestQuery() {
-	tables, err := suite.sqlite.GetTables()
+	tables, err := suite.adapter.GetTables()
 	if err != nil {
 		assert.Nil(suite.T(), err)
 	}
 	for _, table := range tables {
 		query := fmt.Sprintf("SELECT * FROM %s", table)
 
-		rows, err := suite.sqlite.Query(query)
+		rows, err := suite.adapter.Query(query)
 		assert.Nil(suite.T(), err)
 
 		columns, err := rows.Columns()
