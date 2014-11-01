@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"log"
 	"os/exec"
 	"strings"
 	"testing"
@@ -48,14 +47,10 @@ func (suite *SuiteTester) SetupSuite() {
 	cmd := exec.Command("sqlite3", suite.dsn)
 	cmd.Stdin = strings.NewReader(setup)
 	err := cmd.Run()
-	if err != nil {
-		log.Fatalf("failed to initialized the test db: %s\n", err.Error())
-	}
+	assert.Nil(suite.T(), err)
 
 	suite.sqlite, err = MakeSQLite(suite.dsn)
-	if err != nil {
-		log.Fatalf("Test setup fail: %s\n", err.Error())
-	}
+	assert.Nil(suite.T(), err)
 	fmt.Printf("Setup test enviroment...\n")
 }
 
@@ -63,31 +58,56 @@ func (suite *SuiteTester) TearDownSuite() {
 	suite.sqlite.Close()
 	cmd := exec.Command("rm", "-rf", suite.dsn)
 	err := cmd.Run()
-	if err != nil {
-		log.Fatalf("failed to rm the test database: %s\n", err.Error())
-	}
+	assert.Nil(suite.T(), err)
 	fmt.Printf("Teardown test enviroment...\n")
 }
 
 func (suite *SuiteTester) TestGetTables() {
 	tables, err := suite.sqlite.GetTables()
-	if err != nil {
-		log.Fatalf("failed to get tables: %s\n", err.Error())
-	}
-	assert.Equal(suite.T(), len(tables), 4)
+	assert.Nil(suite.T(), err)
+	assert.NotEqual(suite.T(), len(tables), 0)
 }
 
 func (suite *SuiteTester) TestGetSchema() {
 	tables, err := suite.sqlite.GetTables()
-	if err != nil {
-		log.Fatalf("failed to get tables: %s\n", err.Error())
-	}
+	assert.Nil(suite.T(), err)
 	for _, table := range tables {
 		_, err := suite.sqlite.GetSchema(table)
 		assert.Nil(suite.T(), err)
 	}
 }
 
+func (suite *SuiteTester) TestDDL() {
+	statement := `CREATE TABLE testDDL ( 
+					id INTEGER PRIMARY KEY, 
+					c1 VARCHAR(10), 
+					c2 VARCHAR(20) 
+				  )`
+	_, err := suite.sqlite.Exec(statement)
+	assert.Nil(suite.T(), err)
+
+	tables, err := suite.sqlite.GetTables()
+	assert.Nil(suite.T(), err)
+	assert.Equal(suite.T(), len(tables), 5)
+
+	found := false
+	for _, t := range tables {
+		if t == "testDDL" {
+			found = true
+			break
+		}
+	}
+
+	assert.True(suite.T(), found)
+
+	statement = `DROP TABLE testDDL`
+	_, err = suite.sqlite.Exec(statement)
+	assert.Nil(suite.T(), err)
+
+	tables, err = suite.sqlite.GetTables()
+	assert.Nil(suite.T(), err)
+	assert.Equal(suite.T(), len(tables), 4)
+}
 func (suite *SuiteTester) TestQuery() {
 	tables, err := suite.sqlite.GetTables()
 	if err != nil {
@@ -107,18 +127,13 @@ func (suite *SuiteTester) TestQuery() {
 		next, err := rowToStrings(rows)
 		assert.Nil(suite.T(), err)
 
-		i := 0
 		for true {
 			row, err := next()
-			if err != nil {
-				log.Fatalf("invalid row")
-			}
+			assert.Nil(suite.T(), err)
 			if row == nil {
 				break
 			}
-			i++
 		}
-		assert.Equal(suite.T(), i, 4)
 		rows.Close()
 	}
 }
