@@ -8,10 +8,9 @@ description: test for adapter adapter
 import (
 	"fmt"
 	"github.com/amsa/doop/common"
+	"github.com/amsa/doop/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"os/exec"
-	"strings"
 	"testing"
 )
 
@@ -22,45 +21,16 @@ type SuiteTester struct {
 }
 
 func (suite *SuiteTester) SetupSuite() {
-	setup := `
-		CREATE TABLE t1 (pkey INTEGER PRIMARY KEY, c1 INTEGER, c2 varchar(32));
-		CREATE TABLE t2 (pkey INTEGER PRIMARY KEY, c1 INTEGER, c2 varchar(32));
-		CREATE TABLE t3 (pkey INTEGER PRIMARY KEY, c1 INTEGER, c2 varchar(32));
-		CREATE TABLE t4 (pkey INTEGER PRIMARY KEY, c1 INTEGER, c2 varchar(32));
-		INSERT INTO t1 VALUES(1,1,'HEY');
-		INSERT INTO t1 VALUES(2,1,'HEY');
-		INSERT INTO t1 VALUES(3,1,'HEY');
-		INSERT INTO t1 VALUES(4,1,'HEY');
-		INSERT INTO t2 VALUES(1,2,'HEY');
-		INSERT INTO t2 VALUES(2,2,'HEY');
-		INSERT INTO t2 VALUES(3,2,'HEY');
-		INSERT INTO t2 VALUES(4,2,'HEY');
-		INSERT INTO t3 VALUES(1,3,'HEY');
-		INSERT INTO t3 VALUES(2,3,'HEY');
-		INSERT INTO t3 VALUES(3,3,'HEY');
-		INSERT INTO t3 VALUES(4,3,'HEY');
-		INSERT INTO t4 VALUES(1,4,'HEY');
-		INSERT INTO t4 VALUES(2,4,'HEY');
-		INSERT INTO t4 VALUES(3,4,'HEY');
-		INSERT INTO t4 VALUES(4,4,'HEY');
-		`
 	suite.dsn = "test_db"
-	cmd := exec.Command("sqlite3", suite.dsn)
-	cmd.Stdin = strings.NewReader(setup)
-	err := cmd.Run()
+	test.SetupDb(suite.dsn)
+	adpt, err := MakeSQLite(suite.dsn)
 	assert.Nil(suite.T(), err)
-
-	suite.adapter, err = MakeSQLite(suite.dsn)
-	assert.Nil(suite.T(), err)
-	fmt.Printf("Setup test enviroment...\n")
+	suite.adapter = adpt
 }
 
 func (suite *SuiteTester) TearDownSuite() {
 	suite.adapter.Close()
-	cmd := exec.Command("rm", "-rf", suite.dsn)
-	err := cmd.Run()
-	assert.Nil(suite.T(), err)
-	fmt.Printf("Teardown test enviroment...\n")
+	test.CleanDb(suite.dsn)
 }
 
 func (suite *SuiteTester) TestGetTables() {
