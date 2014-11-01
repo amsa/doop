@@ -7,6 +7,7 @@ description: test for adapter adapter
 */
 import (
 	"fmt"
+	"github.com/amsa/doop/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"os/exec"
@@ -135,7 +136,7 @@ func (suite *SuiteTester) TestQuery() {
 
 		assert.Equal(suite.T(), len(columns), 3)
 
-		next, err := rowToStrings(rows)
+		next, err := common.RowToStrings(rows)
 		assert.Nil(suite.T(), err)
 
 		for true {
