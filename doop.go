@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/amsa/doop/common"
 	"github.com/amsa/doop/core"
 )
 
@@ -33,14 +34,10 @@ func initialize(doop *core.Doop, args []string) {
 }
 
 func list(doop *core.Doop, args []string) {
-	m := doop.GetDbIdMap()
-	if len(m) == 0 {
-		return
-	}
 	if len(args) == 0 { // show the list of the databases
 		fmt.Println("List of databases:")
-		for _, dbInfo := range m {
-			fmt.Println("    " + dbInfo.Name)
+		for _, db := range doop.ListDbs() {
+			fmt.Println("    " + db)
 		}
 	} else { // show the list of branches for the given database
 		fmt.Printf("List of branches for `%s`:", args[0])
@@ -70,7 +67,7 @@ func main() {
 	var args []string
 	for i := range os.Args {
 		if os.Args[i] == "-v" { // enable verbose mode
-			core.SetDebug(true)
+			common.SetDebug(true)
 		} else {
 			args = append(args, os.Args[i])
 		}

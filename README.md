@@ -1,13 +1,12 @@
-doop-core
-=========
-Doop is a tool that aims to provide branching and versioning for your database, just like what Git does for your code base!
+What is Doop?
+=============
+Doop is a tool that aims to provide branching and versioning for your database, just like what Git does for your code base! 
+<img src="http://upload.wikimedia.org/wikipedia/en/d/d6/Doop.png" width="10%" style="float: right" />
 
-##doop-core package provides following APIs:
+Doop is:
 
-1. `Doop` -- struct that represents the Doop instance, manages one or multiple DoopDBs.
-1. `DoopDB` -- struct that represents Doop-wrapping database 
-0. `Result_type`  -- struct that the result of query on database
-1. `GetDoop() Doop`  -- return a Doop instance
+- A Marvel character
+- In the dictionary: “A little copper cup in which a diamond is held while being cut.”
 
 ##`Doop struct` implements following functions
 1. `TrackDB(dsn string) (bool, error)` -- start managing the database by given dsn.

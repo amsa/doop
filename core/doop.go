@@ -70,21 +70,22 @@ func (doop *Doop) initDoopDir() {
 	}
 }
 
+// initAdapter initializes Doop database adapter based on the given DSN string
 func (doop *Doop) initAdapter(dsn string) {
 	doop.adapter = adapter.GetAdapter(dsn)
 }
 
-// initConfig loads and parses Doop configurations
-//func (doop *Doop) initConfig() {
-//if doop.config.Database.DSN != "" {
-//return
-//}
-//handleError(gcfg.ReadFileInto(&doop.config, doop.getConfigFile()))
-//}
+//initConfig loads and parses Doop configurations
+/*func (doop *Doop) initConfig() {
+	if doop.config.Database.DSN != "" {
+	return
+	}
+	handleError(gcfg.ReadFileInto(&doop.config, doop.getConfigFile()))
+}
 
-//func (doop *Doop) getConfigFile() string {
-//return strings.Join([]string{doop.homeDir, DOOP_CONF_FILE}, string(os.PathSeparator))
-//}
+func (doop *Doop) getConfigFile() string {
+	return strings.Join([]string{doop.homeDir, DOOP_CONF_FILE}, string(os.PathSeparator))
+}*/
 
 func (doop *Doop) getLogicalTables() map[string]string {
 	//find out the name of tables in default branch
@@ -105,6 +106,7 @@ func (doop *Doop) getLogicalTables() map[string]string {
 	return ret
 }
 
+// getDbInfoByDbName retrieves database info for the given database (name)
 func (doop *Doop) getDbInfoByDbName(dbName string) *DoopDbInfo {
 	var info *DoopDbInfo = nil
 	for _, dbInfo := range doop.GetDbIdMap() {
@@ -121,6 +123,7 @@ func (doop *Doop) getDbInfoByDbName(dbName string) *DoopDbInfo {
 	return info
 }
 
+// getDbMappingFile returns the path to Doop mapping file
 func (doop *Doop) getDbMappingFile() string {
 	return strings.Join([]string{doop.homeDir, DOOP_MAPPING_FILE}, string(os.PathSeparator))
 }
@@ -134,6 +137,7 @@ func (doop *Doop) setDbId(dbName string, dbId string, dsn string) (bool, error) 
 	return true, nil
 }
 
+// removeDbId removes database information from the mappin file
 func (doop *Doop) removeDbId(dbId string) (bool, error) {
 	newMap := ""
 	delete(doop.dbInfoMap, dbId)
@@ -188,7 +192,7 @@ func (doop *Doop) TrackDb(dbName string, dsn string) (bool, error) {
 		`, DOOP_MASTER)
 		HandleErrorAny(doop.adapter.Exec(statement))
 
-		//Insert tables in to doop_master
+		//Insert tables into doop_master
 		tables, err := doop.adapter.GetTables()
 		HandleErrorAny(tables, err)
 
@@ -225,14 +229,16 @@ func (doop *Doop) TrackDb(dbName string, dsn string) (bool, error) {
 	return false, errors.New("Database already initialized!")
 }
 
-func (doop *Doop) ListDbs() ([]string, error) {
-	return nil, nil
+// ListDbs returns an array of all the tracked databases
+func (doop *Doop) ListDbs() []string {
+	var list []string
+	for _, dbInfo := range doop.GetDbIdMap() {
+		list = append(list, dbInfo.Name)
+	}
+	return list
 }
 
-//func (doop *Doop) GetDb(dbName string) (*DoopDb, error) {
-//return nil, nil
-//}
-
+// UntrackDb untracks a database
 func (doop *Doop) UntrackDb(dbName string) (bool, error) {
 	info := doop.getDbInfoByDbName(dbName)
 	doop.initAdapter(info.DSN)
@@ -242,6 +248,7 @@ func (doop *Doop) UntrackDb(dbName string) (bool, error) {
 	return false, nil
 }
 
+// CreateBranch creates a new branch of the database forking from the given parent branch
 func (doop *Doop) CreateBranch(branchName string, parentBranch string) (bool, error) {
 	if branchName != DOOP_DEFAULT_BRANCH && parentBranch == "" {
 		return false, errors.New("Parent branch name is not specified.")
@@ -276,14 +283,17 @@ func (doop *Doop) CreateBranch(branchName string, parentBranch string) (bool, er
 	return true, nil
 }
 
+// RemoveBranch deletes a branch
 func (doop *Doop) RemoveBranch(branchName string) (bool, error) {
 	return false, nil
 }
 
-func (doop *Doop) MergeBranch(to string, from string) (bool, error) {
+// MergeBranch merges two branches into the first one (from)
+func (doop *Doop) MergeBranch(from string, to string) (bool, error) {
 	return false, nil
 }
 
+// ListBranches returns the list of all the branches for the given database
 func (doop *Doop) ListBranches(dbName string) []string {
 	doop.initAdapter(doop.getDbInfoByDbName(dbName).DSN)
 
