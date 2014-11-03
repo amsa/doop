@@ -1,11 +1,11 @@
 What is Doop?
 =============
 Doop is a tool that aims to provide branching and versioning for your database, just like what Git does for your code base! 
-<img src="http://upload.wikimedia.org/wikipedia/en/d/d6/Doop.png" width="10%" style="float: right" />
 
 Doop is:
 
-- A Marvel character
+<img src="http://upload.wikimedia.org/wikipedia/en/d/d6/Doop.png" width="12%" />
+- A Marvel character 
 - In the dictionary: “A little copper cup in which a diamond is held while being cut.”
 
 ##`Doop struct` implements following functions
