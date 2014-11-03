@@ -48,3 +48,8 @@ There is a standard format for DSN to connect to different databases:
 - mysql:      mysql://username:password@address/dbname?param=value
 - postgres:   postgresql://username:password@address/dbname?param=value
 ```
+
+Contributors
+============
+- Amin Saeidi
+- Wenbin Xiao
