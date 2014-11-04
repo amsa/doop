@@ -253,6 +253,7 @@ func (doop *Doop) CreateBranch(branchName string, parentBranch string) (bool, er
 	if branchName != DOOP_DEFAULT_BRANCH && parentBranch == "" {
 		return false, errors.New("Parent branch name is not specified.")
 	}
+	// insert a row with branch and its parent name along with metadata (empty json object for now)
 	HandleErrorAny(doop.adapter.
 		Exec(`INSERT INTO `+DOOP_TABLE_BRANCH+` (name, parent, metadata) VALUES (?, ?, '{}')`, branchName, parentBranch))
 
