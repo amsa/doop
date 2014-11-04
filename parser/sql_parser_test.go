@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestParser(t *testing.T) {
+func TestSelect(t *testing.T) {
 	parser := MakeSqlParser()
 	sql, err := parser.Parse(`SELECT * FROM users;`)
 	common.HandleError(err)
@@ -23,4 +23,20 @@ func TestParser(t *testing.T) {
 	assert.Equal(t, "*", sql.Columns)
 	assert.Equal(t, "id=2 AND username='amsa'", sql.Conditions)
 	//fmt.Printf("%#v\n", sql)
+}
+
+func TestInsert(t *testing.T) {
+	parser := MakeSqlParser()
+	sql, err := parser.Parse(`INSERT INTO users VALUES ('Amin', 'Saeidi');`)
+	common.HandleError(err)
+	assert.Equal(t, "INSERT", sql.Op)
+	assert.Equal(t, "users", sql.TblName)
+	assert.Equal(t, "'Amin', 'Saeidi'", sql.Values)
+
+	sql, err = parser.Parse(`INSERT INTO users (fname, lname) VALUES ('Amin', 'Saeidi');`)
+	common.HandleError(err)
+	assert.Equal(t, "INSERT", sql.Op)
+	assert.Equal(t, "users", sql.TblName)
+	assert.Equal(t, "fname, lname", sql.Columns)
+	assert.Equal(t, "'Amin', 'Saeidi'", sql.Values)
 }

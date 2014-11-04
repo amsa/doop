@@ -39,6 +39,8 @@ func (sqlParser *SqlParser) Parse(query string) (*Sql, error) {
 	switch op {
 	case "SELECT":
 		return sqlParser.parseSelect(query)
+	case "INSERT":
+		return sqlParser.parseInsert(query)
 	default:
 		return nil, errors.New("Invalid SQL operation: " + op)
 	}
@@ -58,6 +60,23 @@ func (sqlParser *SqlParser) parseSelect(query string) (*Sql, error) {
 	sql.Columns = matches[2]
 	sql.TblName = matches[3]
 	sql.Conditions = matches[4]
+	//sql.Tail = matches[5]
+	return sql, nil
+}
+
+func (sqlParser *SqlParser) parseInsert(query string) (*Sql, error) {
+	selectRe := regexp.MustCompile(`(?i)INSERT\s+INTO\s+(\w+)(?:\s+\(([^)]+)\))?\s+VALUES\s*\(([^)]+)\)`)
+	matches := selectRe.FindStringSubmatch(query)
+	if matches == nil {
+		return nil, errors.New("Query did not match INSERT pattern: " + query)
+	}
+	sql := new(Sql)
+	sql.Raw = query
+	sql.Type = SQL_TYPE_DML
+	sql.Op = "INSERT"
+	sql.TblName = matches[1]
+	sql.Columns = matches[2]
+	sql.Values = matches[3]
 	//sql.Tail = matches[5]
 	return sql, nil
 }
