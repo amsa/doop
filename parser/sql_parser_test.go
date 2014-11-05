@@ -21,8 +21,22 @@ func TestSelect(t *testing.T) {
 	assert.Equal(t, "SELECT", sql.Op)
 	assert.Equal(t, "users", sql.TblName)
 	assert.Equal(t, "*", sql.Columns)
-	assert.Equal(t, "id=2 AND username='amsa'", sql.Conditions)
+	assert.Equal(t, "WHERE id=2 AND username='amsa'", sql.Tail)
 	//fmt.Printf("%#v\n", sql)
+
+	sql, err = parser.Parse(`SELECT * FROM users ORDER BY fname`)
+	common.HandleError(err)
+	assert.Equal(t, "SELECT", sql.Op)
+	assert.Equal(t, "users", sql.TblName)
+	assert.Equal(t, "*", sql.Columns)
+	assert.Equal(t, "ORDER BY fname", sql.Tail)
+
+	sql, err = parser.Parse(`SELECT * FROM users WHERE id=2 AND username='amsa' ORDER BY id GROUP BY test`)
+	common.HandleError(err)
+	assert.Equal(t, "SELECT", sql.Op)
+	assert.Equal(t, "users", sql.TblName)
+	assert.Equal(t, "*", sql.Columns)
+	assert.Equal(t, "WHERE id=2 AND username='amsa' ORDER BY id GROUP BY test", sql.Tail)
 }
 
 func TestInsert(t *testing.T) {

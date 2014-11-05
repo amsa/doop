@@ -16,15 +16,13 @@ const (
 )
 
 type Sql struct {
-	Raw        string // Raw sql query
-	Type       int    // DDL or DML
-	Op         string // SELECT or INSERT or ...
-	TblName    string // Table name
-	Columns    string // Columns (e.g. in SELECT specified before FROM)
-	Joins      string // joins
-	Conditions string // Conditions specified by WHERE (if any)
-	Values     string // Values used in INSERT or UPDATE
-	Tail       string // The rest of the query (which we don't care about)
+	Raw     string // Raw sql query
+	Type    int    // DDL or DML
+	Op      string // SELECT or INSERT or ...
+	TblName string // Table name
+	Columns string // Columns (e.g. in SELECT specified before FROM)
+	Values  string // Values used in INSERT or UPDATE
+	Tail    string // The rest of the query (which we don't care about)
 }
 
 type SqlParser struct {
@@ -47,20 +45,20 @@ func (sqlParser *SqlParser) Parse(query string) (*Sql, error) {
 }
 
 func (sqlParser *SqlParser) parseSelect(query string) (*Sql, error) {
-	selectRe := regexp.MustCompile(`(?i)(SELECT)(?:\s+DISTINCT)?\s+(?:INTO\s+\w+\s+)?([A-Za-z,*_]+)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.*))?`)
+	//selectRe := regexp.MustCompile(`(?i)(SELECT)(?:\s+DISTINCT)?\s+(?:INTO\s+\w+\s+)?([A-Za-z,*_]+)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+))?`)
+	selectRe := regexp.MustCompile(`(?i)(SELECT)(?:\s+DISTINCT)?\s+(?:INTO\s+\w+\s+)?([A-Za-z,*_]+)\s+FROM\s+(\w+)\s*(.*)?`)
 	matches := selectRe.FindStringSubmatch(query)
-	//fmt.Printf("%#v", matches)
 	if matches == nil {
 		return nil, errors.New("Query did not match select pattern: " + query)
 	}
+
 	sql := new(Sql)
 	sql.Raw = query
 	sql.Type = SQL_TYPE_DML
 	sql.Op = matches[1]
 	sql.Columns = matches[2]
 	sql.TblName = matches[3]
-	sql.Conditions = matches[4]
-	//sql.Tail = matches[5]
+	sql.Tail = matches[4]
 	return sql, nil
 }
 
