@@ -86,6 +86,40 @@ func (doopdb *DoopDb) createDoopMaster() error {
 	return nil
 }
 
+func (doopdb *DoopDb) destroyDoopMaster() error {
+	statement := fmt.Sprintf(`
+		DROP TABLE %s
+	`, DOOP_MASTER)
+	_, err := doopdb.adapter.Exec(statement)
+	return err
+}
+
+func (doopdb *DoopDb) createBranchTable() error {
+	// Create branch table to store the branches
+	_, err := doopdb.adapter.Exec(`CREATE TABLE ` + DOOP_TABLE_BRANCH + ` (
+			id integer NOT NULL PRIMARY KEY,
+			name     text,
+			parent   text,
+			metadata text
+		);`)
+	if err != nil {
+		return err
+	}
+	//_, err = doopdb.adapter.Exec(`CREATE UNIQUE INDEX __branch_name_idx ON ` + DOOP_TABLE_BRANCH + ` (name);`)
+	//if err != nil {
+	//return err
+	//}
+	return nil
+}
+
+func (doopdb *DoopDb) destroyBranchTable() error {
+	_, err := doopdb.adapter.Exec(`DROP TABLE ` + DOOP_TABLE_BRANCH)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 /*
 Initialize the database to doopDb, it:
 
@@ -96,22 +130,17 @@ Initialize the database to doopDb, it:
 
 */
 func (doopdb *DoopDb) Init() error {
-
 	// Create the doop_master table
 	err := doopdb.createDoopMaster()
 	HandleError(err)
 
-	// Create branch table to store the branches
-	HandleErrorAny(doopdb.adapter.Exec(`CREATE TABLE ` + DOOP_TABLE_BRANCH + ` (
-			id integer NOT NULL PRIMARY KEY,
-			name     text,
-			parent   text,
-			metadata text
-		);`))
-	HandleErrorAny(doopdb.adapter.Exec(`CREATE UNIQUE INDEX __branch_name_idx ON ` + DOOP_TABLE_BRANCH + ` (name);`))
+	// Create the branch management table
+	err = doopdb.createBranchTable()
+	HandleError(err)
 
 	// Create default branch
 	_, err = doopdb.CreateBranch(DOOP_DEFAULT_BRANCH, "")
+	HandleError(err)
 	return err
 
 }

@@ -37,7 +37,7 @@ func TestRunSuite(t *testing.T) {
 	suite.Run(t, suiteTester)
 }
 
-func (suite *SuiteTester) TestMasterTable() {
+func (suite *SuiteTester) TestDoopMasterTable() {
 	all_tables, err := suite.db.GetAllTables()
 	assert.Nil(suite.T(), err)
 	err = suite.db.createDoopMaster()
@@ -47,4 +47,39 @@ func (suite *SuiteTester) TestMasterTable() {
 	for tableName, sql := range tables {
 		assert.Equal(suite.T(), sql, all_tables[tableName])
 	}
+	err = suite.db.destroyDoopMaster()
+	assert.Nil(suite.T(), err)
+
+	//test sucessfully destroy
+	all_tables, err = suite.db.GetAllTables()
+	assert.Nil(suite.T(), err)
+
+	_, ok := all_tables[DOOP_MASTER]
+	assert.False(suite.T(), ok)
+}
+
+func (suite *SuiteTester) TestBranchManagementTable() {
+	tables, err := suite.db.GetAllTables()
+	assert.Nil(suite.T(), err)
+	_, ok := tables[DOOP_TABLE_BRANCH]
+	assert.False(suite.T(), ok)
+	//create the table
+	err = suite.db.createBranchTable()
+	assert.Nil(suite.T(), err)
+
+	tables, err = suite.db.GetAllTables()
+	assert.Nil(suite.T(), err)
+
+	_, ok = tables[DOOP_TABLE_BRANCH]
+	assert.True(suite.T(), ok)
+
+	err = suite.db.destroyBranchTable()
+	assert.Nil(suite.T(), err)
+
+	//test sucessfully destroy
+	tables, err = suite.db.GetAllTables()
+	assert.Nil(suite.T(), err)
+
+	_, ok = tables[DOOP_TABLE_BRANCH]
+	assert.False(suite.T(), ok)
 }
