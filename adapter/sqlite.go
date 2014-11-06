@@ -3,7 +3,6 @@ package adapter
 import (
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
-	"log"
 )
 
 type SQLite struct {
@@ -29,28 +28,18 @@ func (sqliteDb *SQLite) Exec(sql string, args ...interface{}) (sql.Result, error
 	return sqliteDb.db.Exec(sql, args...)
 }
 
-func (sqliteDb *SQLite) GetSchema(table_name string) (string, error) {
-	var ret string
-	query := "SELECT sql FROM sqlite_master WHERE name=?"
-	row := sqliteDb.db.QueryRow(query, table_name)
-	if row == nil {
-		log.Fatal("invalid table_name")
-	}
-	row.Scan(&ret)
-	return ret, nil
-}
-
-func (sqliteDb *SQLite) GetTables() ([]string, error) {
-	ret := make([]string, 0, 64)
-	query := "SELECT name FROM sqlite_master WHERE type='table'"
+func (sqliteDb *SQLite) GetTables() (map[string]string, error) {
+	ret := make(map[string]string)
+	query := "SELECT name, sql FROM sqlite_master WHERE type='table'"
 	rows, err := sqliteDb.db.Query(query)
 	if err != nil {
 		return nil, err
 	}
 	for rows.Next() {
 		var name string
-		rows.Scan(&name)
-		ret = append(ret, name)
+		var sql string
+		rows.Scan(&name, &sql)
+		ret[name] = sql
 	}
 	return ret, nil
 }
