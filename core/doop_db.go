@@ -21,6 +21,12 @@ const (
 	DOOP_DEFAULT_BRANCH = "master"
 	DOOP_TABLE_BRANCH   = "__branch"
 	DOOP_MASTER         = "__doop_master"
+	DOOP_TABLE_TYPE     = "logical_table"
+	DOOP_SUFFIX_T       = "t"    //logical table, will be appended to the view of the logical table
+	DOOP_SUFFIX_VD      = "vdel" //vertical deletion
+	DOOP_SUFFIX_HD      = "hdel" //horizontal deletion
+	DOOP_SUFFIX_V       = "v"    //v section
+	DOOP_SUFFIX_H       = "h"    //h section
 )
 
 type DoopDbInfo struct {
@@ -62,11 +68,10 @@ func (doopdb *DoopDb) createDoopMaster() error {
 
 	//Insert tables into doop_master
 	tables, err := doopdb.adapter.GetTables()
-	HandleErrorAny(tables, err)
+	HandleError(err)
 
-	for i, table := range tables {
-		schema, err := doopdb.adapter.GetSchema(table)
-		HandleErrorAny(schema, err)
+	i := 1
+	for table, sql := range tables {
 		statement = fmt.Sprintf(`
 				INSERT INTO %s VALUES (
 					%i,		
@@ -75,7 +80,8 @@ func (doopdb *DoopDb) createDoopMaster() error {
 					%s,
 					%s	
 				)	
-			`, i, table, "logical_table", DOOP_DEFAULT_BRANCH, schema)
+			`, i, table, DOOP_TABLE_TYPE, DOOP_DEFAULT_BRANCH, sql)
+		i++
 	}
 	return nil
 }
@@ -150,7 +156,7 @@ func (doopdb *DoopDb) GetSchema(branchName string, tableName string) ([]string, 
 	return nil, nil
 }
 
-func (doopdb *DoopDb) GetAllTables() ([]string, error) {
+func (doopdb *DoopDb) GetAllTables() (map[string]string, error) {
 	return doopdb.adapter.GetTables()
 }
 func (doopdb *DoopDb) GetTables(branchName string) map[string]string {
@@ -242,6 +248,8 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 		//vsec
 
 		//hsec
+
+		//View for logical table
 	}
 	return true, nil
 }

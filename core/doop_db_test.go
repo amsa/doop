@@ -27,21 +27,6 @@ func (suite *SuiteTester) SetupSuite() {
 	suite.db = db
 }
 
-func (suite *SuiteTester) TestMasterTable() {
-	all_tables, err := suite.db.GetAllTables()
-	assert.Nil(suite.T(), err)
-	err = suite.db.createDoopMaster()
-	assert.Nil(suite.T(), err)
-
-	tables := suite.db.GetTables()
-	i := 0
-	for k, _ := range tables {
-		assert.Equal(suite.T(), k, all_tables[i])
-		i++
-	}
-
-}
-
 func (suite *SuiteTester) TearDownSuite() {
 	suite.db.Close()
 	test.CleanDb(suite.db_path)
@@ -50,4 +35,16 @@ func (suite *SuiteTester) TearDownSuite() {
 func TestRunSuite(t *testing.T) {
 	suiteTester := new(SuiteTester)
 	suite.Run(t, suiteTester)
+}
+
+func (suite *SuiteTester) TestMasterTable() {
+	all_tables, err := suite.db.GetAllTables()
+	assert.Nil(suite.T(), err)
+	err = suite.db.createDoopMaster()
+	assert.Nil(suite.T(), err)
+
+	tables := suite.db.GetTables("master") //the argument is not supported yet
+	for tableName, sql := range tables {
+		assert.Equal(suite.T(), sql, all_tables[tableName])
+	}
 }
