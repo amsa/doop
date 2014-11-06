@@ -20,12 +20,9 @@ import (
 )
 
 const (
-	DOOP_DIRNAME        = ".doop"
-	DOOP_CONF_FILE      = "config"
-	DOOP_MAPPING_FILE   = "doopm"
-	DOOP_DEFAULT_BRANCH = "master"
-	DOOP_TABLE_BRANCH   = "__branch"
-	DOOP_MASTER         = "__doop_master"
+	DOOP_DIRNAME      = ".doop"
+	DOOP_CONF_FILE    = "config"
+	DOOP_MAPPING_FILE = "doopm"
 )
 
 type Doop struct {
@@ -152,7 +149,7 @@ func (doop *Doop) TrackDb(dbName string, dsn string) (bool, error) {
 			return false, e
 		}
 		//initialize metadata in that database
-		doopdb := MakeDoopDb(dsn)
+		doopdb := MakeDoopDb(&DoopDbInfo{dsn, dbName, dbId})
 
 		err := doopdb.Init()
 		if err != nil {
@@ -173,10 +170,16 @@ func (doop *Doop) ListDbs() []string {
 	return list
 }
 
+func (doop *Doop) GetDoopDb(dbName string) *DoopDb {
+	info := doop.getDbInfoByDbName(dbName)
+	doopdb := MakeDoopDb(info)
+	return doopdb
+}
+
 // UntrackDb untracks a database
 func (doop *Doop) UntrackDb(dbName string) (bool, error) {
 	info := doop.getDbInfoByDbName(dbName)
-	doopdb := MakeDoopDb(info.DSN)
+	doopdb := MakeDoopDb(info)
 	doop.removeDbId(info.Hash)
 	err := doopdb.Clean()
 	if err != nil {

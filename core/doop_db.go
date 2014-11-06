@@ -1,11 +1,26 @@
 package core
 
+/*
+DoopDb provides the same interface as Adapter.
+However, DoopDb is logical database adpater, which means that the tables in DoopDb are not arranged
+as how they look like.
+
+Thus DoopDb is responsible for translating operations on (logical) tables to those on concrete tables.
+
+Also, DoopDb provides another set of APIs for branch.
+*/
 import (
 	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/amsa/doop/adapter"
 	. "github.com/amsa/doop/common"
+)
+
+const (
+	DOOP_DEFAULT_BRANCH = "master"
+	DOOP_TABLE_BRANCH   = "__branch"
+	DOOP_MASTER         = "__doop_master"
 )
 
 type DoopDbInfo struct {
@@ -15,15 +30,21 @@ type DoopDbInfo struct {
 }
 
 type DoopDb struct {
-	dsn     string
+	info    *DoopDbInfo
 	adapter adapter.Adapter
 }
 
-func MakeDoopDb(dsn string) *DoopDb {
-	return &DoopDb{dsn, adapter.GetAdapter(dsn)}
+func MakeDoopDb(info *DoopDbInfo) *DoopDb {
+	return &DoopDb{info, adapter.GetAdapter(info.DSN)}
 }
 
-func (doopdb *DoopDb) Init() error {
+/*
+
+	DooDb Creation and Elimination
+
+*/
+
+func (doopdb *DoopDb) createDoopMaster() error {
 	// Create doop_master table to store metadata of all tables
 	statement := fmt.Sprintf(`
 			CREATE TABLE %s (
@@ -31,10 +52,13 @@ func (doopdb *DoopDb) Init() error {
 				name text,
 				type text,
 				branch text,
-				sql text,
+				sql text
 			)	
 		`, DOOP_MASTER)
-	HandleErrorAny(doopdb.adapter.Exec(statement))
+	_, err := doopdb.adapter.Exec(statement)
+	if err != nil {
+		return err
+	}
 
 	//Insert tables into doop_master
 	tables, err := doopdb.adapter.GetTables()
@@ -49,10 +73,28 @@ func (doopdb *DoopDb) Init() error {
 					%s,
 					%s,
 					%s,
-					%sql,	
+					%s	
 				)	
 			`, i, table, "logical_table", DOOP_DEFAULT_BRANCH, schema)
 	}
+	return nil
+}
+
+/*
+Initialize the database to doopDb, it:
+
+* create doop_master table
+* insert existing tables info to doop_master table
+* create branch table to store information of branches
+* create a default(master) branch
+
+*/
+func (doopdb *DoopDb) Init() error {
+
+	// Create the doop_master table
+	err := doopdb.createDoopMaster()
+	HandleError(err)
+
 	// Create branch table to store the branches
 	HandleErrorAny(doopdb.adapter.Exec(`CREATE TABLE ` + DOOP_TABLE_BRANCH + ` (
 			id integer NOT NULL PRIMARY KEY,
@@ -80,9 +122,88 @@ func (doopdb *DoopDb) Clean() error {
 	return nil
 }
 
-// initAdapter initializes Doop database adapter based on the given DSN string
-func (doopdb *DoopDb) initAdapter(dsn string) {
-	doopdb.adapter = adapter.GetAdapter(dsn)
+/*
+
+
+				Standard SQL adapter interace
+
+	it translates the operation, which is on branch on logical tables, to corresponding ones on concrete tables
+
+*/
+
+/*
+Query interface
+*/
+func (doopDb *DoopDb) Query(sql string, args ...interface{}) (*sql.Rows, error) {
+	return nil, nil
+}
+
+/*
+Exec interface
+*/
+
+func (doopDb *DoopDb) Exec(sql string, args ...interface{}) (sql.Result, error) {
+	return nil, nil
+}
+
+func (doopdb *DoopDb) GetSchema() ([]string, error) {
+	return nil, nil
+}
+
+func (doopdb *DoopDb) GetAllTables() ([]string, error) {
+	return doopdb.adapter.GetTables()
+}
+func (doopdb *DoopDb) GetTables() map[string]string {
+	//find out the name of tables in default branch
+	statement := fmt.Sprintf(`
+		SELECT name, sql FROM %s WHERE branch=? AND type=?
+	`, DOOP_MASTER)
+	rows, err := doopdb.adapter.Query(statement, DOOP_DEFAULT_BRANCH, "logical_table")
+	HandleError(err)
+
+	ret := make(map[string]string)
+	for rows.Next() {
+		var name string
+		var sql string
+		err := rows.Scan(&name, &sql)
+		HandleErrorAny(rows, err)
+		ret[name] = sql
+	}
+	return ret
+}
+
+func (doopdb *DoopDb) Close() error {
+	return doopdb.adapter.Close()
+}
+
+/*
+
+					Branch Interface
+	It provides an interface to interact on branches
+
+
+*/
+// ListBranches returns the list of all the branches for the given database
+func (doopdb *DoopDb) ListBranches() []string {
+	rt := make([]string, 1)
+	rows, err := doopdb.adapter.Query(`SELECT name FROM ` + DOOP_TABLE_BRANCH + `;`)
+	HandleError(err)
+	for rows.Next() {
+		var name string
+		rows.Scan(&name)
+		rt = append(rt, name)
+	}
+	return rt
+}
+
+// RemoveBranch deletes a branch
+func (doopdb *DoopDb) RemoveBranch(branchName string) (bool, error) {
+	return false, nil
+}
+
+// MergeBranch merges two branches into the first one (from)
+func (doopdb *DoopDb) MergeBranch(from string, to string) (bool, error) {
+	return false, nil
 }
 
 // CreateBranch creates a new branch of the database forking from the given parent branch
@@ -123,63 +244,4 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 		//hsec
 	}
 	return true, nil
-}
-
-func (doopdb *DoopDb) GetTables() map[string]string {
-	//find out the name of tables in default branch
-	statement := fmt.Sprintf(`
-		SELECT name, sql FROM %s WHERE branch=? AND type=?
-	`)
-	rows, err := doopdb.adapter.Query(statement, DOOP_MASTER, "logical_table")
-	HandleErrorAny(rows, err)
-
-	ret := make(map[string]string)
-	for rows.Next() {
-		var name string
-		var sql string
-		err := rows.Scan(&name, &sql)
-		HandleErrorAny(rows, err)
-		ret[name] = sql
-	}
-	return ret
-}
-
-// ListBranches returns the list of all the branches for the given database
-func (doopdb *DoopDb) ListBranches() []string {
-	rt := make([]string, 1)
-	rows, err := doopdb.adapter.Query(`SELECT name FROM ` + DOOP_TABLE_BRANCH + `;`)
-	HandleError(err)
-	for rows.Next() {
-		var name string
-		rows.Scan(&name)
-		rt = append(rt, name)
-	}
-	return rt
-}
-
-// RemoveBranch deletes a branch
-func (doopdb *DoopDb) RemoveBranch(branchName string) (bool, error) {
-	return false, nil
-}
-
-// MergeBranch merges two branches into the first one (from)
-func (doopdb *DoopDb) MergeBranch(from string, to string) (bool, error) {
-	return false, nil
-}
-
-/*
-Query interface
-it translates the query, which is on logical tables, to query on concrete tables
-*/
-func (doopDb *DoopDb) Query(sql string, args ...interface{}) (*sql.Rows, error) {
-	return nil, nil
-}
-
-/*
-Exec interface
-it transalate the exec statement, which is on logical tables, to exec statement on concreate tables
-*/
-
-func (doopDb *DoopDb) Exec(sql string, args ...interface{}) (sql.Result, error) {
-	return nil, nil
 }
