@@ -36,6 +36,7 @@ func MakeSqlParser() *SqlParser {
 	return new(SqlParser)
 }
 
+//use the rewriter to rewrite the tokens which appear in both origin and target
 func (sqlParser *SqlParser) Rewrite(origin string, rewriter Rewriter, target map[string]string) string {
 	var buffer bytes.Buffer
 	var lastToken bytes.Buffer

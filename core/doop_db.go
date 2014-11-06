@@ -273,9 +273,11 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 		}
 
 		//hdel
+		//TODO finish schema parsing, them complete this part
 
 		//vsec
-		sql := parser.Parse(schema)
+		//sql, err := sql_parser.Parse(schema)
+		//TODO finish schema parsing, them complete this part
 
 		//hsec
 		rewriter := func(origin string) string {
@@ -292,6 +294,7 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 		}
 
 		//View for logical table
+		//TODO logical table, it will be a view
 	}
 	return true, nil
 }
