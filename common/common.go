@@ -14,7 +14,15 @@ func SetDebug(val bool) {
 }
 
 func AddPrefix(origin string, prefix string) string {
-	return fmt.Sprintf("__%s_%s", prefix, origin)
+	return fmt.Sprintf("%s_%s", prefix, origin)
+}
+
+func AddSuffix(origin string, suffix string) string {
+	return fmt.Sprintf("%s_%s", origin, suffix)
+}
+
+func ConcreteName(origin string, prefix string, suffix string) string {
+	return fmt.Sprintf("__%s_%s_%s", prefix, origin, suffix)
 }
 
 func Debug(values ...interface{}) {

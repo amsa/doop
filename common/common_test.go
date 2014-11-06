@@ -42,8 +42,27 @@ func TestRunSuite(t *testing.T) {
 func (suite *SuiteTester) TestAddPrefix() {
 	origin := "table"
 	prefix := "branch1"
-	expect := "__branch1_table"
+	expect := "branch1_table"
 	result := AddPrefix(origin, prefix)
+
+	assert.Equal(suite.T(), result, expect)
+}
+
+func (suite *SuiteTester) TestAddSuffix() {
+	origin := "table"
+	suffix := "v"
+	expect := "table_v"
+	result := AddSuffix(origin, suffix)
+
+	assert.Equal(suite.T(), result, expect)
+}
+
+func (suite *SuiteTester) TestConcreteName() {
+	origin := "table"
+	prefix := "branch1"
+	suffix := "v"
+	expect := "__branch1_table_v"
+	result := ConcreteName(origin, prefix, suffix)
 
 	assert.Equal(suite.T(), result, expect)
 }
