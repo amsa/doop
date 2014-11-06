@@ -4,7 +4,6 @@ Doop is a tool that aims to provide branching and versioning for your database, 
 
 Doop is:
 
-<img src="http://upload.wikimedia.org/wikipedia/en/d/d6/Doop.png" width="12%" />
 - A Marvel character 
 - In the dictionary: “A little copper cup in which a diamond is held while being cut.”
 
