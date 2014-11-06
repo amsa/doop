@@ -13,6 +13,10 @@ func SetDebug(val bool) {
 	debug = val
 }
 
+func AddPrefix(origin string, prefix string) string {
+	return fmt.Sprintf("__%s_%s", prefix, origin)
+}
+
 func Debug(values ...interface{}) {
 	if debug {
 		if len(values) == 0 {
