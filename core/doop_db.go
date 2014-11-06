@@ -134,7 +134,7 @@ func (doopdb *DoopDb) Clean() error {
 /*
 Query interface
 */
-func (doopDb *DoopDb) Query(sql string, args ...interface{}) (*sql.Rows, error) {
+func (doopDb *DoopDb) Query(branchName string, sql string, args ...interface{}) (*sql.Rows, error) {
 	return nil, nil
 }
 
@@ -142,18 +142,18 @@ func (doopDb *DoopDb) Query(sql string, args ...interface{}) (*sql.Rows, error) 
 Exec interface
 */
 
-func (doopDb *DoopDb) Exec(sql string, args ...interface{}) (sql.Result, error) {
+func (doopDb *DoopDb) Exec(branchName string, sql string, args ...interface{}) (sql.Result, error) {
 	return nil, nil
 }
 
-func (doopdb *DoopDb) GetSchema() ([]string, error) {
+func (doopdb *DoopDb) GetSchema(branchName string, tableName string) ([]string, error) {
 	return nil, nil
 }
 
 func (doopdb *DoopDb) GetAllTables() ([]string, error) {
 	return doopdb.adapter.GetTables()
 }
-func (doopdb *DoopDb) GetTables() map[string]string {
+func (doopdb *DoopDb) GetTables(branchName string) map[string]string {
 	//find out the name of tables in default branch
 	statement := fmt.Sprintf(`
 		SELECT name, sql FROM %s WHERE branch=? AND type=?
