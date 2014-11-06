@@ -83,3 +83,7 @@ func (suite *SuiteTester) TestBranchManagementTable() {
 	_, ok = tables[DOOP_TABLE_BRANCH]
 	assert.False(suite.T(), ok)
 }
+
+func (suite *SuiteTester) TestInitAndClean() {
+
+}

@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"github.com/amsa/doop/adapter"
 	. "github.com/amsa/doop/common"
+	"github.com/amsa/doop/parser"
 )
 
 const (
@@ -243,6 +244,7 @@ func (doopdb *DoopDb) MergeBranch(from string, to string) (bool, error) {
 
 // CreateBranch creates a new branch of the database forking from the given parent branch
 func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool, error) {
+	sql_parser := parser.MakeSqlParser()
 	if branchName != DOOP_DEFAULT_BRANCH && parentBranch == "" {
 		return false, errors.New("Parent branch name is not specified.")
 	}
@@ -250,33 +252,44 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 	HandleErrorAny(doopdb.adapter.
 		Exec(`INSERT INTO `+DOOP_TABLE_BRANCH+` (name, parent, metadata) VALUES (?, ?, '{}')`, branchName, parentBranch))
 
-	//get all physical table
+	//get all tables in current database
 	tables, err := doopdb.adapter.GetTables()
-
 	if err != nil {
 		return false, err
 	}
 
 	//create companian tables for each logical table
 	for tableName, schema := range tables {
-		statements := make([]string, 0, 64)
-
-		//need to parse the schema to create h
 		//vdel
-		//TODO: parse schema to get primary key type,
-		//if no primary key, error thrown
+		vdel_name := ConcreteName(tableName, branchName, DOOP_SUFFIX_VD)
 		vdel := fmt.Sprintf(`
-			CREATE TABLE __%s_%s_vdel (
-				%s
+			CREATE TABLE %s (
+				c_name char(128)
 			)	
-		`, branchName, tableName, schema)
-		statements = append(statements, vdel)
+		`, vdel_name)
+		_, err := doopdb.adapter.Exec(vdel)
+		if err != nil {
+			return false, err
+		}
 
 		//hdel
 
 		//vsec
+		sql := parser.Parse(schema)
 
 		//hsec
+		rewriter := func(origin string) string {
+			prefix := branchName
+			suffix := DOOP_SUFFIX_V
+			return ConcreteName(origin, prefix, suffix)
+		}
+		hsec := sql_parser.Rewrite(schema, rewriter, tables)
+
+		_, err = doopdb.adapter.Exec(hsec)
+
+		if err != nil {
+			return false, err
+		}
 
 		//View for logical table
 	}
