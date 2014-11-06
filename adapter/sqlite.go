@@ -17,8 +17,8 @@ func MakeSQLite(databasePath string, args ...interface{}) (Adapter, error) {
 	return ret, err
 }
 
-func (sqliteDb *SQLite) Close() (bool, error) {
-	return true, sqliteDb.db.Close()
+func (sqliteDb *SQLite) Close() error {
+	return sqliteDb.db.Close()
 }
 
 func (sqliteDb *SQLite) Query(sql string, args ...interface{}) (*sql.Rows, error) {

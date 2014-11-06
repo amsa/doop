@@ -6,7 +6,7 @@ import (
 )
 
 type Adapter interface {
-	Close() (bool, error)
+	Close() error
 	Query(sql string, args ...interface{}) (*sql.Rows, error)
 	Exec(sql string, args ...interface{}) (sql.Result, error)
 	GetTables() ([]string, error)
