@@ -5,6 +5,7 @@ A simple parser to parse SQL
 package parser
 
 import (
+	"bytes"
 	"errors"
 	"regexp"
 	"strings"
@@ -17,6 +18,7 @@ const (
 
 type Sql struct {
 	Raw     string // Raw sql query
+	Pos     int    // Current cursor position
 	Type    int    // DDL or DML
 	Op      string // SELECT or INSERT or ...
 	TblName string // Table name
@@ -28,8 +30,37 @@ type Sql struct {
 type SqlParser struct {
 }
 
+type Rewriter func(string) string
+
 func MakeSqlParser() *SqlParser {
 	return new(SqlParser)
+}
+
+//use the rewriter to rewrite the tokens which appear in both origin and target
+func (sqlParser *SqlParser) Rewrite(origin string, rewriter Rewriter, target map[string]string) string {
+	var buffer bytes.Buffer
+	var lastToken bytes.Buffer
+	var lastChar rune
+	for _, c := range origin {
+		//only keep one space
+		if c == ' ' || c == '.' || c == ',' {
+			if lastChar != ' ' {
+				word := lastToken.String()
+				if _, ok := target[word]; ok {
+					word = rewriter(word)
+				}
+				buffer.WriteString(word)
+				buffer.WriteRune(c)
+				lastChar = c
+				lastToken.Reset()
+			}
+		} else {
+			lastToken.WriteRune(c)
+			lastChar = c
+		}
+	}
+	buffer.WriteString(lastToken.String())
+	return buffer.String()
 }
 
 func (sqlParser *SqlParser) Parse(query string) (*Sql, error) {

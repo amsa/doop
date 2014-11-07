@@ -6,11 +6,10 @@ import (
 )
 
 type Adapter interface {
-	Close() (bool, error)
+	Close() error
 	Query(sql string, args ...interface{}) (*sql.Rows, error)
 	Exec(sql string, args ...interface{}) (sql.Result, error)
-	GetTables() ([]string, error)
-	GetSchema(table_name string) (string, error)
+	GetTables() (map[string]string, error)
 }
 
 func GetAdapter(dsn string) Adapter {

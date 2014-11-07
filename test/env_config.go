@@ -38,6 +38,7 @@ func SetupDb(dbName string) {
 	err := cmd.Run()
 
 	if err != nil {
+		fmt.Println("Fail to setup test database...")
 		panic(err)
 	}
 	fmt.Printf("Setup test database...\n")
@@ -47,6 +48,7 @@ func CleanDb(dbName string) {
 	cmd := exec.Command("rm", "-rf", dbName)
 	err := cmd.Run()
 	if err != nil {
+		fmt.Println("Fail to remove test database...")
 		panic(err)
 	}
 	fmt.Printf("Teardown test database...\n")
