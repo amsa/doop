@@ -36,27 +36,34 @@ func MakeSqlParser() *SqlParser {
 	return new(SqlParser)
 }
 
+func isSpace(c rune) bool {
+	spaces := map[rune]bool{' ': true, '\t': true, '\n': true, '\r': true}
+	_, ok := spaces[c]
+	return ok
+}
+
+func isDelimiter(c rune) bool {
+	delimiters := map[rune]bool{',': true, '.': true}
+	_, ok := delimiters[c]
+	return ok
+}
+
 //use the rewriter to rewrite the tokens which appear in both origin and target
 func (sqlParser *SqlParser) Rewrite(origin string, rewriter Rewriter, target map[string]string) string {
 	var buffer bytes.Buffer
 	var lastToken bytes.Buffer
-	var lastChar rune
 	for _, c := range origin {
 		//only keep one space
-		if c == ' ' || c == '.' || c == ',' {
-			if lastChar != ' ' {
-				word := lastToken.String()
-				if _, ok := target[word]; ok {
-					word = rewriter(word)
-				}
-				buffer.WriteString(word)
-				buffer.WriteRune(c)
-				lastChar = c
-				lastToken.Reset()
+		if isSpace(c) || isDelimiter(c) {
+			word := lastToken.String()
+			if _, ok := target[word]; ok {
+				word = rewriter(word)
 			}
+			buffer.WriteString(word)
+			buffer.WriteRune(c)
+			lastToken.Reset()
 		} else {
 			lastToken.WriteRune(c)
-			lastChar = c
 		}
 	}
 	buffer.WriteString(lastToken.String())
