@@ -28,7 +28,7 @@ func (sqliteDb *SQLite) Exec(sql string, args ...interface{}) (sql.Result, error
 	return sqliteDb.db.Exec(sql, args...)
 }
 
-func (sqliteDb *SQLite) GetTables() (map[string]string, error) {
+func (sqliteDb *SQLite) GetTableSchema() (map[string]string, error) {
 	ret := make(map[string]string)
 	query := "SELECT name, sql FROM sqlite_master WHERE type='table'"
 	rows, err := sqliteDb.db.Query(query)

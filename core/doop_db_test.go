@@ -37,21 +37,21 @@ func TestRunSuite(t *testing.T) {
 	suite.Run(t, suiteTester)
 }
 
-func (suite *SuiteTester) TestDoopMasterTable() {
-	all_tables, err := suite.db.GetAllTables()
+func (suite *SuiteTester) TestMasterTable() {
+	all_tables, err := suite.db.GetAllTableSchema()
 	assert.Nil(suite.T(), err)
-	err = suite.db.createDoopMaster()
+	err = suite.db.createMaster()
 	assert.Nil(suite.T(), err)
 
-	tables := suite.db.GetTables("master") //the argument is not supported yet
+	tables := suite.db.GetTableSchema("master") //the argument is not supported yet
 	for tableName, sql := range tables {
 		assert.Equal(suite.T(), sql, all_tables[tableName])
 	}
-	err = suite.db.destroyDoopMaster()
+	err = suite.db.destroyMaster()
 	assert.Nil(suite.T(), err)
 
 	//test sucessfully destroy
-	all_tables, err = suite.db.GetAllTables()
+	all_tables, err = suite.db.GetAllTableSchema()
 	assert.Nil(suite.T(), err)
 
 	_, ok := all_tables[DOOP_MASTER]
@@ -59,7 +59,7 @@ func (suite *SuiteTester) TestDoopMasterTable() {
 }
 
 func (suite *SuiteTester) TestBranchManagementTable() {
-	tables, err := suite.db.GetAllTables()
+	tables, err := suite.db.GetAllTableSchema()
 	assert.Nil(suite.T(), err)
 	_, ok := tables[DOOP_TABLE_BRANCH]
 	assert.False(suite.T(), ok)
@@ -67,7 +67,7 @@ func (suite *SuiteTester) TestBranchManagementTable() {
 	err = suite.db.createBranchTable()
 	assert.Nil(suite.T(), err)
 
-	tables, err = suite.db.GetAllTables()
+	tables, err = suite.db.GetAllTableSchema()
 	assert.Nil(suite.T(), err)
 
 	_, ok = tables[DOOP_TABLE_BRANCH]
@@ -77,7 +77,7 @@ func (suite *SuiteTester) TestBranchManagementTable() {
 	assert.Nil(suite.T(), err)
 
 	//test sucessfully destroy
-	tables, err = suite.db.GetAllTables()
+	tables, err = suite.db.GetAllTableSchema()
 	assert.Nil(suite.T(), err)
 
 	_, ok = tables[DOOP_TABLE_BRANCH]

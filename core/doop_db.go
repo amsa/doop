@@ -51,7 +51,7 @@ func MakeDoopDb(info *DoopDbInfo) *DoopDb {
 
 */
 
-func (doopdb *DoopDb) createDoopMaster() error {
+func (doopdb *DoopDb) createMaster() error {
 	// Create doop_master table to store metadata of all tables
 	statement := fmt.Sprintf(`
 			CREATE TABLE %s (
@@ -68,7 +68,7 @@ func (doopdb *DoopDb) createDoopMaster() error {
 	}
 
 	//Insert tables into doop_master
-	tables, err := doopdb.adapter.GetTables()
+	tables, err := doopdb.adapter.GetTableSchema()
 	HandleError(err)
 
 	i := 1
@@ -87,7 +87,7 @@ func (doopdb *DoopDb) createDoopMaster() error {
 	return nil
 }
 
-func (doopdb *DoopDb) destroyDoopMaster() error {
+func (doopdb *DoopDb) destroyMaster() error {
 	statement := fmt.Sprintf(`
 		DROP TABLE %s
 	`, DOOP_MASTER)
@@ -132,7 +132,7 @@ Initialize the database to doopDb, it:
 */
 func (doopdb *DoopDb) Init() error {
 	// Create the doop_master table
-	err := doopdb.createDoopMaster()
+	err := doopdb.createMaster()
 	HandleError(err)
 
 	// Create the branch management table
@@ -186,10 +186,10 @@ func (doopdb *DoopDb) GetSchema(branchName string, tableName string) ([]string, 
 	return nil, nil
 }
 
-func (doopdb *DoopDb) GetAllTables() (map[string]string, error) {
-	return doopdb.adapter.GetTables()
+func (doopdb *DoopDb) GetAllTableSchema() (map[string]string, error) {
+	return doopdb.adapter.GetTableSchema()
 }
-func (doopdb *DoopDb) GetTables(branchName string) map[string]string {
+func (doopdb *DoopDb) GetTableSchema(branchName string) map[string]string {
 	//find out the name of tables in default branch
 	statement := fmt.Sprintf(`
 		SELECT name, sql FROM %s WHERE branch=? AND type=?
@@ -253,10 +253,10 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 		Exec(`INSERT INTO `+DOOP_TABLE_BRANCH+` (name, parent, metadata) VALUES (?, ?, '{}')`, branchName, parentBranch))
 
 	//get all tables in current database
-	tables, err := doopdb.adapter.GetTables()
-	if err != nil {
-		return false, err
+	if branchName == DOOP_DEFAULT_BRANCH {
+		parentBranch = branchName
 	}
+	tables := doopdb.GetTableSchema(parentBranch)
 
 	//create companian tables for each logical table
 	for tableName, schema := range tables {

@@ -9,7 +9,7 @@ type Adapter interface {
 	Close() error
 	Query(sql string, args ...interface{}) (*sql.Rows, error)
 	Exec(sql string, args ...interface{}) (sql.Result, error)
-	GetTables() (map[string]string, error)
+	GetTableSchema() (map[string]string, error) //return all tables
 }
 
 func GetAdapter(dsn string) Adapter {
