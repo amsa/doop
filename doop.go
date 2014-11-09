@@ -41,7 +41,7 @@ func list(doop *core.Doop, args []string) {
 		}
 	} else { // show the list of branches for the given database
 		fmt.Printf("List of branches for `%s`:", args[0])
-		for _, branch := range doop.ListBranches(args[0]) {
+		for _, branch := range doop.GetDoopDb(args[0]).ListBranches() {
 			fmt.Println("    " + branch)
 		}
 	}
