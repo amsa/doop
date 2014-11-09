@@ -54,6 +54,12 @@ func MakeDoopDb(info *DoopDbInfo) *DoopDb {
 */
 
 func (doopdb *DoopDb) createMaster() error {
+	//get tables first of all
+	tables, err := doopdb.adapter.GetTableSchema()
+	if err != nil {
+		return err
+	}
+
 	// Create doop_master table to store metadata of all tables
 	statement := fmt.Sprintf(`
 			CREATE TABLE %s (
@@ -63,27 +69,29 @@ func (doopdb *DoopDb) createMaster() error {
 				branch text,
 				sql text
 			);`, DOOP_MASTER)
-	_, err := doopdb.adapter.Exec(statement)
+	_, err = doopdb.adapter.Exec(statement)
 	if err != nil {
-		return err
+		return errors.New("failed to create table: " + err.Error())
 	}
 
 	//Insert tables into doop_master
-	tables, err := doopdb.adapter.GetTableSchema()
-	HandleError(err)
-
-	i := 1
+	i := 0
 	for table, sql := range tables {
+		i++
 		statement = fmt.Sprintf(`
 				INSERT INTO %s VALUES (
-					%i,
-					%s,
-					%s,
-					%s,
-					%s	
+					%v,
+					'%s',
+					'%s',
+					'%s',
+					'%s'	
 				)	
 			`, DOOP_MASTER, i, table, DOOP_TABLE_TYPE, DOOP_DEFAULT_BRANCH, sql)
-		i++
+		_, err = doopdb.adapter.Exec(statement)
+		if err != nil {
+			msg := fmt.Sprintf("failed to insert table: %s", err.Error())
+			return errors.New(msg)
+		}
 	}
 	return nil
 }
@@ -132,21 +140,25 @@ Initialize the database to doopDb, it:
 func (doopdb *DoopDb) Init() error {
 	// Create the doop_master table
 	err := doopdb.createMaster()
-	HandleError(err)
+	if err != nil {
+		msg := fmt.Sprintf("failed to create master: %s", err.Error())
+		return errors.New(msg)
+	}
 
 	// Create the branch management table
 	err = doopdb.createBranchTable()
-	HandleError(err)
+	if err != nil {
+		msg := fmt.Sprintf("failed to create branch management: %s", err.Error())
+		return errors.New(msg)
+	}
 
 	// Create default branch
 	_, err = doopdb.CreateBranch(DOOP_DEFAULT_BRANCH, "")
-	HandleError(err)
-
-	// Create default branch
-	_, err = doopdb.CreateLogicalView(DOOP_DEFAULT_BRANCH)
-	HandleError(err)
-	return err
-
+	if err != nil {
+		msg := fmt.Sprintf("failed to create default branch : %s", err.Error())
+		return errors.New(msg)
+	}
+	return nil
 }
 
 func (doopdb *DoopDb) Clean() error {
@@ -193,6 +205,7 @@ func (doopdb *DoopDb) GetAllTableSchema() (map[string]string, error) {
 	return doopdb.adapter.GetTableSchema()
 }
 
+//argument is not supported yet
 func (doopdb *DoopDb) GetTableSchema(branchName string) map[string]string {
 	//find out the name of tables in default branch
 	statement := fmt.Sprintf(`
@@ -273,15 +286,38 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 		`, vdel_name)
 		_, err := doopdb.adapter.Exec(vdel)
 		if err != nil {
-			return false, err
+			msg := fmt.Sprintf("failed to create vdel: %s", err.Error())
+			return false, errors.New(msg)
 		}
 
 		//hdel
 		//TODO finish schema parsing, them complete this part
+		// Currently it defaultly use integer as the type of the key
+		hdel_name := ConcreteName(tableName, branchName, DOOP_SUFFIX_HD)
+		hdel := fmt.Sprintf(`
+			CREATE TABLE %s (
+				key integer
+			)
+		`, hdel_name)
+		_, err = doopdb.adapter.Exec(hdel)
+		if err != nil {
+			msg := fmt.Sprintf("failed to create hdel: %s", err.Error())
+			return false, errors.New(msg)
+		}
 
 		//vsec
 		//sql, err := sql_parser.Parse(schema)
 		//TODO finish schema parsing, them complete this part
+		//now it assume there is a column call "id" in all table
+		vsec_name := ConcreteName(tableName, branchName, DOOP_SUFFIX_V)
+		vsec := fmt.Sprintf(`
+			CREATE TABLE %s AS SELECT id FROM %s
+		`, vsec_name, tableName)
+		_, err = doopdb.adapter.Exec(vsec)
+		if err != nil {
+			msg := fmt.Sprintf("failed to execute \n%s\n: %s", vsec, err.Error())
+			return false, errors.New(msg)
+		}
 
 		//hsec
 		rewriter := func(origin string) string {
@@ -294,7 +330,8 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 		_, err = doopdb.adapter.Exec(hsec)
 
 		if err != nil {
-			return false, err
+			msg := fmt.Sprintf("failed to create hsec: %s", err.Error())
+			return false, errors.New(msg)
 		}
 
 		//View for logical table

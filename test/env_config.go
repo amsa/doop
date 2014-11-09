@@ -12,10 +12,10 @@ import (
 
 func SetupDb(dbName string) {
 	setup := `
-		CREATE TABLE t1 (pkey INTEGER PRIMARY KEY, c1 INTEGER, c2 varchar(32));
-		CREATE TABLE t2 (pkey INTEGER PRIMARY KEY, c1 INTEGER, c2 varchar(32));
-		CREATE TABLE t3 (pkey INTEGER PRIMARY KEY, c1 INTEGER, c2 varchar(32));
-		CREATE TABLE t4 (pkey INTEGER PRIMARY KEY, c1 INTEGER, c2 varchar(32));
+		CREATE TABLE t1 (id INTEGER PRIMARY KEY, c1 INTEGER, c2 varchar(32));
+		CREATE TABLE t2 (id INTEGER PRIMARY KEY, c1 INTEGER, c2 varchar(32));
+		CREATE TABLE t3 (id INTEGER PRIMARY KEY, c1 INTEGER, c2 varchar(32));
+		CREATE TABLE t4 (id INTEGER PRIMARY KEY, c1 INTEGER, c2 varchar(32));
 		INSERT INTO t1 VALUES(1,1,'HEY');
 		INSERT INTO t1 VALUES(2,1,'HEY');
 		INSERT INTO t1 VALUES(3,1,'HEY');
@@ -41,7 +41,6 @@ func SetupDb(dbName string) {
 		fmt.Println("Fail to setup test database...")
 		panic(err)
 	}
-	fmt.Printf("Setup test database...\n")
 }
 
 func CleanDb(dbName string) {
@@ -51,5 +50,4 @@ func CleanDb(dbName string) {
 		fmt.Println("Fail to remove test database...")
 		panic(err)
 	}
-	fmt.Printf("Teardown test database...\n")
 }

@@ -34,19 +34,10 @@ func (suite *SuiteTester) TearDownSuite() {
 	test.CleanDb(suite.db_path)
 }
 
-func (suite *SuiteTester) TestGetTables() {
-	tables, err := suite.adapter.GetTables()
+func (suite *SuiteTester) TestGetTableSchema() {
+	tables, err := suite.adapter.GetTableSchema()
 	assert.Nil(suite.T(), err)
 	assert.NotEqual(suite.T(), len(tables), 0)
-}
-
-func (suite *SuiteTester) TestGetSchema() {
-	tables, err := suite.adapter.GetTables()
-	assert.Nil(suite.T(), err)
-	for _, table := range tables {
-		_, err := suite.adapter.GetSchema(table)
-		assert.Nil(suite.T(), err)
-	}
 }
 
 /*
@@ -61,12 +52,12 @@ func (suite *SuiteTester) TestDDLTable() {
 	_, err := suite.adapter.Exec(statement)
 	assert.Nil(suite.T(), err)
 
-	tables, err := suite.adapter.GetTables()
+	tables, err := suite.adapter.GetTableSchema()
 	assert.Nil(suite.T(), err)
 	assert.Equal(suite.T(), len(tables), 5)
 
 	found := false
-	for _, t := range tables {
+	for t, _ := range tables {
 		if t == "testDDL" {
 			found = true
 			break
@@ -79,7 +70,7 @@ func (suite *SuiteTester) TestDDLTable() {
 	_, err = suite.adapter.Exec(statement)
 	assert.Nil(suite.T(), err)
 
-	tables, err = suite.adapter.GetTables()
+	tables, err = suite.adapter.GetTableSchema()
 	assert.Nil(suite.T(), err)
 	assert.Equal(suite.T(), len(tables), 4)
 }
@@ -92,15 +83,16 @@ func (suite *SuiteTester) TestDDLSchema() {
 }
 
 func (suite *SuiteTester) TestQuery() {
-	tables, err := suite.adapter.GetTables()
+	tables, err := suite.adapter.GetTableSchema()
 	if err != nil {
 		assert.Nil(suite.T(), err)
 	}
-	for _, table := range tables {
+	for table, _ := range tables {
 		query := fmt.Sprintf("SELECT * FROM %s", table)
 
 		rows, err := suite.adapter.Query(query)
 		assert.Nil(suite.T(), err)
+		assert.NotNil(suite.T(), rows)
 
 		columns, err := rows.Columns()
 		assert.Nil(suite.T(), err)
