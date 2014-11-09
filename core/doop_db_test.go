@@ -5,7 +5,7 @@ tests for doop_db.go
 */
 import (
 	//"fmt"
-	//"github.com/amsa/doop/common"
+	"github.com/amsa/doop/common"
 	"github.com/amsa/doop/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -87,10 +87,46 @@ func (suite *SuiteTester) TestBranchManagementTable() {
 	assert.False(suite.T(), ok)
 }
 
-func (suite *SuiteTester) TestInitAndClean() {
-	//original_tables := suite.db.GetTableSchema("")
-	//suite.db.Init()
-	//tables := suite.db.GetTableSchema("")
+func (suite *SuiteTester) TestInit() {
+	//original setting
+	original_tables, err := suite.db.GetAllTableSchema()
+	assert.NotEmpty(suite.T(), original_tables)
+	assert.Nil(suite.T(), err)
+
+	//init the db
+	err = suite.db.Init()
+	assert.Nil(suite.T(), err)
+
+	//get logical table
+	tables := suite.db.GetTableSchema("")
+	assert.NotEmpty(suite.T(), tables)
+
+	//shoud be same as original setting
+	for t, sql := range original_tables {
+		assert.Equal(suite.T(), sql, tables[t])
+	}
+
+	//get all tables
+	all_tables, err := suite.db.GetAllTableSchema()
+	assert.Nil(suite.T(), err)
+	assert.NotEmpty(suite.T(), all_tables)
+
+	//should have correct number of tables
+	//4 companian tables for each table, 1 doop_master table, 1 __branch table
+	old_size := len(original_tables)
+	expected := old_size + old_size*4 + 1 + 1
+	actual := len(all_tables)
+	assert.Equal(suite.T(), expected, actual)
+
+	//check naming convention is applied
+	suffixes := []string{DOOP_SUFFIX_H, DOOP_SUFFIX_V, DOOP_SUFFIX_HD, DOOP_SUFFIX_VD}
+	for t, _ := range original_tables {
+		for _, suffix := range suffixes {
+			name := common.ConcreteName(t, DOOP_DEFAULT_BRANCH, suffix)
+			_, ok := all_tables[name]
+			assert.True(suite.T(), ok, "table %s is not correctly created", name)
+		}
+	}
 }
 func (suite *SuiteTester) TestCreateBranch() {
 

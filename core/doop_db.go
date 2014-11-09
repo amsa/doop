@@ -55,7 +55,9 @@ func MakeDoopDb(info *DoopDbInfo) *DoopDb {
 func (doopdb *DoopDb) createMaster() error {
 	//get tables first of all
 	tables, err := doopdb.adapter.GetTableSchema()
-	HandleError(err)
+	if err != nil {
+		return err
+	}
 
 	// Create doop_master table to store metadata of all tables
 	statement := fmt.Sprintf(`
@@ -137,17 +139,25 @@ Initialize the database to doopDb, it:
 func (doopdb *DoopDb) Init() error {
 	// Create the doop_master table
 	err := doopdb.createMaster()
-	HandleError(err)
+	if err != nil {
+		msg := fmt.Sprintf("failed to create master: %s", err.Error())
+		return errors.New(msg)
+	}
 
 	// Create the branch management table
 	err = doopdb.createBranchTable()
-	HandleError(err)
+	if err != nil {
+		msg := fmt.Sprintf("failed to create branch management: %s", err.Error())
+		return errors.New(msg)
+	}
 
 	// Create default branch
 	_, err = doopdb.CreateBranch(DOOP_DEFAULT_BRANCH, "")
-	HandleError(err)
-
-	return err
+	if err != nil {
+		msg := fmt.Sprintf("failed to create default branch : %s", err.Error())
+		return errors.New(msg)
+	}
+	return nil
 }
 
 func (doopdb *DoopDb) Clean() error {
@@ -275,20 +285,43 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 		`, vdel_name)
 		_, err := doopdb.adapter.Exec(vdel)
 		if err != nil {
-			return false, err
+			msg := fmt.Sprintf("failed to create vdel: %s", err.Error())
+			return false, errors.New(msg)
 		}
 
 		//hdel
 		//TODO finish schema parsing, them complete this part
+		// Currently it defaultly use integer as the type of the key
+		hdel_name := ConcreteName(tableName, branchName, DOOP_SUFFIX_HD)
+		hdel := fmt.Sprintf(`
+			CREATE TABLE %s (
+				key integer
+			)
+		`, hdel_name)
+		_, err = doopdb.adapter.Exec(hdel)
+		if err != nil {
+			msg := fmt.Sprintf("failed to create hdel: %s", err.Error())
+			return false, errors.New(msg)
+		}
 
 		//vsec
 		//sql, err := sql_parser.Parse(schema)
 		//TODO finish schema parsing, them complete this part
+		//now it assume there is a column call "id" in all table
+		vsec_name := ConcreteName(tableName, branchName, DOOP_SUFFIX_V)
+		vsec := fmt.Sprintf(`
+			CREATE TABLE %s AS SELECT id FROM %s
+		`, vsec_name, tableName)
+		_, err = doopdb.adapter.Exec(vsec)
+		if err != nil {
+			msg := fmt.Sprintf("failed to execute \n%s\n: %s", vsec, err.Error())
+			return false, errors.New(msg)
+		}
 
 		//hsec
 		rewriter := func(origin string) string {
 			prefix := branchName
-			suffix := DOOP_SUFFIX_V
+			suffix := DOOP_SUFFIX_H
 			return ConcreteName(origin, prefix, suffix)
 		}
 		hsec := sql_parser.Rewrite(schema, rewriter, tables)
@@ -296,7 +329,8 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 		_, err = doopdb.adapter.Exec(hsec)
 
 		if err != nil {
-			return false, err
+			msg := fmt.Sprintf("failed to create hsec: %s", err.Error())
+			return false, errors.New(msg)
 		}
 
 		//View for logical table
