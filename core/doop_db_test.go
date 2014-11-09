@@ -177,4 +177,39 @@ func (suite *SuiteTester) TestInitAndCreateBranch() {
 			}
 		}
 	}
+
+	//TODO check view
+}
+
+func (suite *SuiteTester) TestListBranches() {
+	new_branch := "new_branch"
+
+	//original setting
+	original_tables, err := suite.db.GetAllTableSchema()
+	assert.NotEmpty(suite.T(), original_tables)
+	assert.Nil(suite.T(), err)
+
+	//init
+	suite.db.Init()
+
+	//should have 1 branch
+	branches := suite.db.ListBranches()
+	suite.Equal(1, len(branches))
+	suite.Equal("master", branches[0])
+
+	//create branch
+	//should give error
+	ok, err := suite.db.CreateBranch(new_branch, "")
+	suite.False(ok)
+	suite.NotNil(err)
+
+	//should succeed
+	ok, err = suite.db.CreateBranch(new_branch, "master")
+	suite.True(ok)
+	suite.Nil(err)
+
+	//should have 2 branches
+	branches = suite.db.ListBranches()
+	suite.Equal(2, len(branches))
+	suite.Equal(new_branch, branches[1])
 }

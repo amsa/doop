@@ -237,7 +237,7 @@ func (doopdb *DoopDb) Close() error {
 */
 // ListBranches returns the list of all the branches for the given database
 func (doopdb *DoopDb) ListBranches() []string {
-	rt := make([]string, 1)
+	rt := make([]string, 0, 16)
 	rows, err := doopdb.adapter.Query(`SELECT name FROM ` + DOOP_TABLE_BRANCH + `;`)
 	HandleError(err)
 	for rows.Next() {
