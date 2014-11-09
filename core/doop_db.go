@@ -13,6 +13,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
 	"github.com/amsa/doop/adapter"
 	. "github.com/amsa/doop/common"
 	"github.com/amsa/doop/parser"
@@ -21,7 +22,7 @@ import (
 const (
 	DOOP_DEFAULT_BRANCH = "master"
 	DOOP_TABLE_BRANCH   = "__branch"
-	DOOP_MASTER         = "__doop_master"
+	DOOP_MASTER         = "__doop"
 	DOOP_TABLE_TYPE     = "logical_table"
 	DOOP_SUFFIX_T       = "t"    //logical table, will be appended to the view of the logical table
 	DOOP_SUFFIX_VD      = "vdel" //vertical deletion
@@ -56,12 +57,11 @@ func (doopdb *DoopDb) createMaster() error {
 	statement := fmt.Sprintf(`
 			CREATE TABLE %s (
 				id integer NOT NULL PRIMARY KEY,
-				name text,
-				type text,
+				tbl_name text,
+				tbl_type text,
 				branch text,
 				sql text
-			)	
-		`, DOOP_MASTER)
+			);`, DOOP_MASTER)
 	_, err := doopdb.adapter.Exec(statement)
 	if err != nil {
 		return err
@@ -75,22 +75,20 @@ func (doopdb *DoopDb) createMaster() error {
 	for table, sql := range tables {
 		statement = fmt.Sprintf(`
 				INSERT INTO %s VALUES (
-					%i,		
+					%i,
 					%s,
 					%s,
 					%s,
 					%s	
 				)	
-			`, i, table, DOOP_TABLE_TYPE, DOOP_DEFAULT_BRANCH, sql)
+			`, DOOP_MASTER, i, table, DOOP_TABLE_TYPE, DOOP_DEFAULT_BRANCH, sql)
 		i++
 	}
 	return nil
 }
 
 func (doopdb *DoopDb) destroyMaster() error {
-	statement := fmt.Sprintf(`
-		DROP TABLE %s
-	`, DOOP_MASTER)
+	statement := fmt.Sprintf(`DROP TABLE %s`, DOOP_MASTER)
 	_, err := doopdb.adapter.Exec(statement)
 	return err
 }
@@ -114,7 +112,7 @@ func (doopdb *DoopDb) createBranchTable() error {
 }
 
 func (doopdb *DoopDb) destroyBranchTable() error {
-	_, err := doopdb.adapter.Exec(`DROP TABLE ` + DOOP_TABLE_BRANCH)
+	_, err := doopdb.adapter.Exec("DROP TABLE " + DOOP_TABLE_BRANCH)
 	if err != nil {
 		return err
 	}
@@ -142,8 +140,8 @@ func (doopdb *DoopDb) Init() error {
 	// Create default branch
 	_, err = doopdb.CreateBranch(DOOP_DEFAULT_BRANCH, "")
 	HandleError(err)
-	return err
 
+	return err
 }
 
 func (doopdb *DoopDb) Clean() error {
@@ -189,10 +187,11 @@ func (doopdb *DoopDb) GetSchema(branchName string, tableName string) ([]string, 
 func (doopdb *DoopDb) GetAllTableSchema() (map[string]string, error) {
 	return doopdb.adapter.GetTableSchema()
 }
+
 func (doopdb *DoopDb) GetTableSchema(branchName string) map[string]string {
 	//find out the name of tables in default branch
 	statement := fmt.Sprintf(`
-		SELECT name, sql FROM %s WHERE branch=? AND type=?
+		SELECT tbl_name, sql FROM %s WHERE branch=? AND tbl_type=?
 	`, DOOP_MASTER)
 	rows, err := doopdb.adapter.Query(statement, DOOP_DEFAULT_BRANCH, "logical_table")
 	HandleError(err)
