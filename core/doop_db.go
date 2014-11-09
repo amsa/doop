@@ -238,7 +238,7 @@ func (doopdb *DoopDb) Close() error {
 */
 // ListBranches returns the list of all the branches for the given database
 func (doopdb *DoopDb) ListBranches() []string {
-	rt := make([]string, 1)
+	rt := make([]string, 0, 16)
 	rows, err := doopdb.adapter.Query(`SELECT name FROM ` + DOOP_TABLE_BRANCH + `;`)
 	HandleError(err)
 	for rows.Next() {
@@ -251,6 +251,8 @@ func (doopdb *DoopDb) ListBranches() []string {
 
 // RemoveBranch deletes a branch
 func (doopdb *DoopDb) RemoveBranch(branchName string) (bool, error) {
+	//TODO remove branch should check whether the branch is the parent
+	//of other branches, if is, return false
 	return false, nil
 }
 
