@@ -29,6 +29,7 @@ const (
 	DOOP_SUFFIX_HD      = "hdel" //horizontal deletion
 	DOOP_SUFFIX_V       = "v"    //v section
 	DOOP_SUFFIX_H       = "h"    //h section
+	DOOP_SUFFIX_VIEW    = "view" //h section
 )
 
 type DoopDbInfo struct {
@@ -141,7 +142,11 @@ func (doopdb *DoopDb) Init() error {
 	_, err = doopdb.CreateBranch(DOOP_DEFAULT_BRANCH, "")
 	HandleError(err)
 
+	// Create default branch
+	_, err = doopdb.CreateLogicalView(DOOP_DEFAULT_BRANCH)
+	HandleError(err)
 	return err
+
 }
 
 func (doopdb *DoopDb) Clean() error {
@@ -281,7 +286,7 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 		//hsec
 		rewriter := func(origin string) string {
 			prefix := branchName
-			suffix := DOOP_SUFFIX_V
+			suffix := DOOP_SUFFIX_H
 			return ConcreteName(origin, prefix, suffix)
 		}
 		hsec := sql_parser.Rewrite(schema, rewriter, tables)
@@ -294,6 +299,20 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 
 		//View for logical table
 		//TODO logical table, it will be a view
+	}
+	return true, nil
+}
+
+func (doopdb *DoopDb) CreateLogicalView(branchName string) (bool, error) {
+	for tableName, _ := range doopdb.GetTableSchema(branchName) {
+		viewName := ConcreteName(tableName, branchName, DOOP_SUFFIX_VIEW)
+		hsec := ConcreteName(tableName, branchName, DOOP_SUFFIX_H)
+		viewCreationSql := `CREATE VIEW %s AS 
+			SELECT * FROM %s UNION %s;`
+		_, err := doopdb.adapter.Exec(fmt.Sprintf(viewCreationSql, viewName, tableName, hsec))
+		if err != nil {
+			return false, err
+		}
 	}
 	return true, nil
 }
