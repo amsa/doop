@@ -53,6 +53,10 @@ func MakeDoopDb(info *DoopDbInfo) *DoopDb {
 */
 
 func (doopdb *DoopDb) createMaster() error {
+	//get tables first of all
+	tables, err := doopdb.adapter.GetTableSchema()
+	HandleError(err)
+
 	// Create doop_master table to store metadata of all tables
 	statement := fmt.Sprintf(`
 			CREATE TABLE %s (
@@ -62,27 +66,29 @@ func (doopdb *DoopDb) createMaster() error {
 				branch text,
 				sql text
 			);`, DOOP_MASTER)
-	_, err := doopdb.adapter.Exec(statement)
+	_, err = doopdb.adapter.Exec(statement)
 	if err != nil {
-		return err
+		return errors.New("failed to create table: " + err.Error())
 	}
 
 	//Insert tables into doop_master
-	tables, err := doopdb.adapter.GetTableSchema()
-	HandleError(err)
-
-	i := 1
+	i := 0
 	for table, sql := range tables {
+		i++
 		statement = fmt.Sprintf(`
 				INSERT INTO %s VALUES (
-					%i,
-					%s,
-					%s,
-					%s,
-					%s	
+					%v,
+					'%s',
+					'%s',
+					'%s',
+					'%s'	
 				)	
 			`, DOOP_MASTER, i, table, DOOP_TABLE_TYPE, DOOP_DEFAULT_BRANCH, sql)
-		i++
+		_, err = doopdb.adapter.Exec(statement)
+		if err != nil {
+			msg := fmt.Sprintf("failed to insert table: %s", err.Error())
+			return errors.New(msg)
+		}
 	}
 	return nil
 }
@@ -188,6 +194,7 @@ func (doopdb *DoopDb) GetAllTableSchema() (map[string]string, error) {
 	return doopdb.adapter.GetTableSchema()
 }
 
+//argument is not supported yet
 func (doopdb *DoopDb) GetTableSchema(branchName string) map[string]string {
 	//find out the name of tables in default branch
 	statement := fmt.Sprintf(`

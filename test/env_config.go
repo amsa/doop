@@ -41,7 +41,6 @@ func SetupDb(dbName string) {
 		fmt.Println("Fail to setup test database...")
 		panic(err)
 	}
-	fmt.Printf("Setup test database...\n")
 }
 
 func CleanDb(dbName string) {
@@ -51,5 +50,4 @@ func CleanDb(dbName string) {
 		fmt.Println("Fail to remove test database...")
 		panic(err)
 	}
-	fmt.Printf("Teardown test database...\n")
 }

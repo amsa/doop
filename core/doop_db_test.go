@@ -19,7 +19,7 @@ type SuiteTester struct {
 	db_path string
 }
 
-func (suite *SuiteTester) SetupSuite() {
+func (suite *SuiteTester) SetupTest() {
 	suite.dsn = "sqlite://test_db"
 	suite.db_path = "test_db"
 	test.SetupDb(suite.db_path)
@@ -27,7 +27,7 @@ func (suite *SuiteTester) SetupSuite() {
 	suite.db = db
 }
 
-func (suite *SuiteTester) TearDownSuite() {
+func (suite *SuiteTester) TearDownTest() {
 	suite.db.Close()
 	test.CleanDb(suite.db_path)
 }
@@ -44,6 +44,9 @@ func (suite *SuiteTester) TestMasterTable() {
 	assert.Nil(suite.T(), err)
 
 	tables := suite.db.GetTableSchema("master") //the argument is not supported yet
+
+	assert.NotEmpty(suite.T(), tables)
+
 	for tableName, sql := range tables {
 		assert.Equal(suite.T(), sql, all_tables[tableName])
 	}
@@ -85,5 +88,10 @@ func (suite *SuiteTester) TestBranchManagementTable() {
 }
 
 func (suite *SuiteTester) TestInitAndClean() {
+	//original_tables := suite.db.GetTableSchema("")
+	//suite.db.Init()
+	//tables := suite.db.GetTableSchema("")
+}
+func (suite *SuiteTester) TestCreateBranch() {
 
 }
