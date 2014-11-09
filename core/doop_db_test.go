@@ -128,6 +128,53 @@ func (suite *SuiteTester) TestInit() {
 		}
 	}
 }
-func (suite *SuiteTester) TestCreateBranch() {
+func (suite *SuiteTester) TestInitAndCreateBranch() {
 
+	new_branch := "new_branch"
+
+	//original setting
+	original_tables, err := suite.db.GetAllTableSchema()
+	assert.NotEmpty(suite.T(), original_tables)
+	assert.Nil(suite.T(), err)
+
+	//init
+	suite.db.Init()
+
+	//create branch
+	//should give error
+	ok, err := suite.db.CreateBranch(new_branch, "")
+	suite.False(ok)
+	suite.NotNil(err)
+
+	//should succeed
+	ok, err = suite.db.CreateBranch(new_branch, "master")
+	suite.True(ok)
+	suite.Nil(err)
+
+	//check number of tables
+	//get all tables
+	all_tables, err := suite.db.GetAllTableSchema()
+	assert.Nil(suite.T(), err)
+	assert.NotEmpty(suite.T(), all_tables)
+
+	//should have correct number of tables
+	//4 companian tables for each table, we have 2 branches so it's 8,
+	//1 doop_master table, 1 __branch table
+	old_size := len(original_tables)
+	expected := old_size + old_size*8 + 1 + 1
+	actual := len(all_tables)
+	assert.Equal(suite.T(), expected, actual)
+
+	//check naming convention is applied to all branches
+	suffixes := []string{DOOP_SUFFIX_H, DOOP_SUFFIX_V, DOOP_SUFFIX_HD, DOOP_SUFFIX_VD}
+	branches := []string{DOOP_DEFAULT_BRANCH, new_branch}
+	for t, _ := range original_tables {
+		for _, suffix := range suffixes {
+			for _, br := range branches {
+				name := common.ConcreteName(t, br, suffix)
+				_, ok := all_tables[name]
+				suite.True(ok, "table %s is not correctly created", name)
+			}
+		}
+	}
 }
