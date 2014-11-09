@@ -213,3 +213,7 @@ func (suite *SuiteTester) TestListBranches() {
 	suite.Equal(2, len(branches))
 	suite.Equal(new_branch, branches[1])
 }
+
+func (suite *SuiteTester) TestRemoveBranch() {
+
+}

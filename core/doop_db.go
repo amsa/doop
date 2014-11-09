@@ -250,6 +250,8 @@ func (doopdb *DoopDb) ListBranches() []string {
 
 // RemoveBranch deletes a branch
 func (doopdb *DoopDb) RemoveBranch(branchName string) (bool, error) {
+	//TODO remove branch should check whether the branch is the parent
+	//of other branches, if is, return false
 	return false, nil
 }
 
