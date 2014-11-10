@@ -2,6 +2,7 @@ package adapter
 
 import (
 	"database/sql"
+
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -30,7 +31,7 @@ func (sqliteDb *SQLite) Exec(sql string, args ...interface{}) (sql.Result, error
 
 func (sqliteDb *SQLite) GetTableSchema() (map[string]string, error) {
 	ret := make(map[string]string)
-	query := "SELECT name, sql FROM sqlite_master WHERE type='table'"
+	query := "SELECT name, sql FROM sqlite_master WHERE type='table' AND tbl_name <> 'sqlite_sequence';"
 	rows, err := sqliteDb.db.Query(query)
 	if err != nil {
 		return nil, err

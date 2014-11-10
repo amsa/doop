@@ -20,16 +20,17 @@ import (
 )
 
 const (
-	DOOP_DEFAULT_BRANCH = "master"
-	DOOP_TABLE_BRANCH   = "__branch"
-	DOOP_MASTER         = "__doop"
-	DOOP_TABLE_TYPE     = "logical_table"
-	DOOP_SUFFIX_T       = "t"    //logical table, will be appended to the view of the logical table
-	DOOP_SUFFIX_VD      = "vdel" //vertical deletion
-	DOOP_SUFFIX_HD      = "hdel" //horizontal deletion
-	DOOP_SUFFIX_V       = "v"    //v section
-	DOOP_SUFFIX_H       = "h"    //h section
-	DOOP_SUFFIX_VIEW    = "view" //h section
+	DOOP_DEFAULT_BRANCH  = "master"
+	DOOP_TABLE_BRANCH    = "__branch"
+	DOOP_BRANCH_NAME_IDX = "__branch_name_idx"
+	DOOP_MASTER          = "__doop"
+	DOOP_TABLE_TYPE      = "logical_table"
+	DOOP_SUFFIX_T        = "t"    //logical table, will be appended to the view of the logical table
+	DOOP_SUFFIX_VD       = "vdel" //vertical deletion
+	DOOP_SUFFIX_HD       = "hdel" //horizontal deletion
+	DOOP_SUFFIX_V        = "v"    //v section
+	DOOP_SUFFIX_H        = "h"    //h section
+	DOOP_SUFFIX_VIEW     = "view" //view section
 )
 
 type DoopDbInfo struct {
@@ -113,7 +114,7 @@ func (doopdb *DoopDb) createBranchTable() error {
 	if err != nil {
 		return err
 	}
-	//_, err = doopdb.adapter.Exec(`CREATE UNIQUE INDEX __branch_name_idx ON ` + DOOP_TABLE_BRANCH + ` (name);`)
+	//_, err = doopdb.adapter.Exec(`CREATE UNIQUE INDEX ` + DOOP_BRANCH_NAME_IDX + ` ON ` + DOOP_TABLE_BRANCH + ` (name);`)
 	//if err != nil {
 	//return err
 	//}
@@ -158,11 +159,12 @@ func (doopdb *DoopDb) Init() error {
 		msg := fmt.Sprintf("failed to create default branch : %s", err.Error())
 		return errors.New(msg)
 	}
+
 	return nil
 }
 
 func (doopdb *DoopDb) Clean() error {
-	_, err := doopdb.adapter.Exec(`DROP INDEX IF EXISTS __branch_name_idx;`)
+	_, err := doopdb.adapter.Exec(`DROP INDEX IF EXISTS ` + DOOP_BRANCH_NAME_IDX)
 	if err != nil {
 		return err
 	}
@@ -336,22 +338,26 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 			return false, errors.New(msg)
 		}
 
-		//View for logical table
-		//TODO logical table, it will be a view
+		// Create logical views
+		_, err = doopdb.CreateLogicalView(branchName, tableName)
+		if err != nil {
+			msg := fmt.Sprintf("failed to create logical views for the default branch : %s", err.Error())
+			return false, errors.New(msg)
+		}
 	}
 	return true, nil
 }
 
-func (doopdb *DoopDb) CreateLogicalView(branchName string) (bool, error) {
-	for tableName, _ := range doopdb.GetTableSchema(branchName) {
-		viewName := ConcreteName(tableName, branchName, DOOP_SUFFIX_VIEW)
-		hsec := ConcreteName(tableName, branchName, DOOP_SUFFIX_H)
-		viewCreationSql := `CREATE VIEW %s AS 
-			SELECT * FROM %s UNION %s;`
-		_, err := doopdb.adapter.Exec(fmt.Sprintf(viewCreationSql, viewName, tableName, hsec))
-		if err != nil {
-			return false, err
-		}
+func (doopdb *DoopDb) CreateLogicalView(branchName string, tableName string) (bool, error) {
+	viewName := ConcreteName(tableName, branchName, DOOP_SUFFIX_VIEW)
+	hsec := ConcreteName(tableName, branchName, DOOP_SUFFIX_H)
+
+	// TODO: complete the view to incorporate all the elements including vdel, hdel and etc.
+	viewCreationSql := fmt.Sprintf(`CREATE VIEW %s AS 
+		SELECT * FROM %s UNION SELECT * FROM %s;`, viewName, tableName, hsec)
+	_, err := doopdb.adapter.Exec(viewCreationSql)
+	if err != nil {
+		return false, err
 	}
 	return true, nil
 }

@@ -5,11 +5,13 @@ tests for doop_db.go
 */
 import (
 	//"fmt"
+
+	"testing"
+
 	"github.com/amsa/doop/common"
 	"github.com/amsa/doop/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"testing"
 )
 
 type SuiteTester struct {
@@ -159,7 +161,7 @@ func (suite *SuiteTester) TestInitAndCreateBranch() {
 
 	//should have correct number of tables
 	//4 companian tables for each table, we have 2 branches so it's 8,
-	//1 doop_master table, 1 __branch table
+	//1 __doop table, 1 __branch table
 	old_size := len(original_tables)
 	expected := old_size + old_size*8 + 1 + 1
 	actual := len(all_tables)
@@ -178,7 +180,15 @@ func (suite *SuiteTester) TestInitAndCreateBranch() {
 		}
 	}
 
-	//TODO check view
+	// check views
+	query := "SELECT name, sql FROM sqlite_master WHERE type='view';"
+	rows, err := suite.db.adapter.Query(query)
+	views := 0
+	for rows.Next() {
+		views++
+	}
+	// we have 4 tables and 2 branches
+	assert.Equal(suite.T(), 4*2, views)
 }
 
 func (suite *SuiteTester) TestListBranches() {
