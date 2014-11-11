@@ -61,7 +61,7 @@ func (suite *SuiteTester) TestConcreteName() {
 	origin := "table"
 	prefix := "branch1"
 	suffix := "v"
-	expect := "__branch1_table_v"
+	expect := "branch1_table_v"
 	result := ConcreteName(origin, prefix, suffix)
 
 	assert.Equal(suite.T(), result, expect)

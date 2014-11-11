@@ -12,7 +12,7 @@ func TestBasicSelectRewrite(t *testing.T) {
 
 	raw := "SELECT * FROM t1 WHERE t1.name == ?"
 	rewriter := func(raw string) string {
-		prefix := "branch"
+		prefix := "__branch"
 		suffix := "logical"
 		return common.ConcreteName(raw, prefix, suffix)
 	}
@@ -31,7 +31,7 @@ func TestComplexSelectRewrite(t *testing.T) {
 			t2 WHERE t1.name == t2.name
 			GROUP BY t2.age`
 	rewriter := func(raw string) string {
-		prefix := "branch"
+		prefix := "__branch"
 		suffix := "logical"
 		return common.ConcreteName(raw, prefix, suffix)
 	}
@@ -54,7 +54,7 @@ func TestSechemaRewrite(t *testing.T) {
 				c2 char(10)
 			)`
 	rewriter := func(raw string) string {
-		prefix := "branch"
+		prefix := "__branch"
 		suffix := "h"
 		return common.ConcreteName(raw, prefix, suffix)
 	}

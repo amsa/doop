@@ -22,7 +22,7 @@ func AddSuffix(origin string, suffix string) string {
 }
 
 func ConcreteName(origin string, prefix string, suffix string) string {
-	return fmt.Sprintf("__%s_%s_%s", prefix, origin, suffix)
+	return fmt.Sprintf("%s_%s_%s", prefix, origin, suffix)
 }
 
 func Debug(values ...interface{}) {
