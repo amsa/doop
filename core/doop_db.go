@@ -40,12 +40,16 @@ type DoopDbInfo struct {
 }
 
 type DoopDb struct {
-	info    *DoopDbInfo
-	adapter adapter.Adapter
+	info         *DoopDbInfo
+	adapter      adapter.Adapter
+	branchTables map[string]map[string]string
+	sql_parser   *parser.SqlParser
 }
 
 func MakeDoopDb(info *DoopDbInfo) *DoopDb {
-	return &DoopDb{info, adapter.GetAdapter(info.DSN)}
+	adpt := adapter.GetAdapter(info.DSN)
+	parser := parser.MakeSqlParser()
+	return &DoopDb{info, adpt, make(map[string]map[string]string, 16), parser}
 }
 
 /*
@@ -187,8 +191,16 @@ func (doopdb *DoopDb) Clean() error {
 /*
 Query interface
 */
-func (doopDb *DoopDb) Query(branchName string, sql string, args ...interface{}) (*sql.Rows, error) {
-	return nil, nil
+func (doopdb *DoopDb) Query(branchName string, sql string, args ...interface{}) (*sql.Rows, error) {
+	//hsec
+	rewriter := func(origin string) string {
+		prefix := branchName
+		suffix := DOOP_SUFFIX_VIEW
+		return ConcreteName(origin, prefix, suffix)
+	}
+	rewritten_sql := doopdb.sql_parser.Rewrite(sql, rewriter, doopdb.GetTableSchema(branchName))
+	rows, err := doopdb.adapter.Query(rewritten_sql, args...)
+	return rows, err
 }
 
 /*
@@ -209,11 +221,16 @@ func (doopdb *DoopDb) GetAllTableSchema() (map[string]string, error) {
 
 //argument is not supported yet
 func (doopdb *DoopDb) GetTableSchema(branchName string) map[string]string {
+	tables, ok := doopdb.branchTables[branchName]
+	if ok {
+		return tables
+	}
 	//find out the name of tables in default branch
 	statement := fmt.Sprintf(`
 		SELECT tbl_name, sql FROM %s WHERE branch=? AND tbl_type=?
 	`, DOOP_MASTER)
 	rows, err := doopdb.adapter.Query(statement, DOOP_DEFAULT_BRANCH, "logical_table")
+	defer rows.Close()
 	HandleError(err)
 
 	ret := make(map[string]string)
@@ -221,9 +238,10 @@ func (doopdb *DoopDb) GetTableSchema(branchName string) map[string]string {
 		var name string
 		var sql string
 		err := rows.Scan(&name, &sql)
-		HandleErrorAny(rows, err)
+		HandleError(err)
 		ret[name] = sql
 	}
+	doopdb.branchTables[branchName] = ret
 	return ret
 }
 
@@ -265,7 +283,6 @@ func (doopdb *DoopDb) MergeBranch(from string, to string) (bool, error) {
 
 // CreateBranch creates a new branch of the database forking from the given parent branch
 func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool, error) {
-	sql_parser := parser.MakeSqlParser()
 	if branchName != DOOP_DEFAULT_BRANCH && parentBranch == "" {
 		return false, errors.New("Parent branch name is not specified.")
 	}
@@ -273,7 +290,8 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 	HandleErrorAny(doopdb.adapter.
 		Exec(`INSERT INTO `+DOOP_TABLE_BRANCH+` (name, parent, metadata) VALUES (?, ?, '{}')`, branchName, parentBranch))
 
-	//get all tables in current database
+	//get all tables in parent branch
+	//if no parent branch(we are creating master branch), then just say parent branch is current branch
 	if branchName == DOOP_DEFAULT_BRANCH {
 		parentBranch = branchName
 	}
@@ -329,7 +347,7 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 			suffix := DOOP_SUFFIX_H
 			return ConcreteName(origin, prefix, suffix)
 		}
-		hsec := sql_parser.Rewrite(schema, rewriter, tables)
+		hsec := doopdb.sql_parser.Rewrite(schema, rewriter, tables)
 
 		_, err = doopdb.adapter.Exec(hsec)
 

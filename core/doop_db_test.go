@@ -4,8 +4,9 @@ package core
 tests for doop_db.go
 */
 import (
-	//"fmt"
+	"fmt"
 
+	"strings"
 	"testing"
 
 	"github.com/amsa/doop/common"
@@ -189,6 +190,43 @@ func (suite *SuiteTester) TestInitAndCreateBranch() {
 	}
 	// we have 4 tables and 2 branches
 	assert.Equal(suite.T(), 4*2, views)
+
+	//check query on view
+	//since no modification on the tables yet, queries on view and the original table should return same values
+	//this test involves tests on Query.
+	for _, br := range branches {
+		for t, _ := range original_tables {
+			query := fmt.Sprintf("SELECT * FROM %s", t)
+			rows_br, err := suite.db.Query(br, query)
+			rows_default, err := suite.db.adapter.Query(query)
+
+			defer rows_br.Close()
+			defer rows_default.Close()
+
+			//common.RowToStrings turns a row into an array of strings
+			rows_br_next, err := common.RowToStrings(rows_br)
+			suite.Nil(err)
+			rows_default_next, err := common.RowToStrings(rows_default)
+			suite.Nil(err)
+
+			//compare all rows
+			for true {
+				r1, e1 := rows_br_next()
+				r2, e2 := rows_default_next()
+				suite.Nil(e1)
+				suite.Nil(e2)
+				if r1 == nil && r2 == nil {
+					break
+				} else if r1 == nil || r2 == nil {
+					suite.Fail("views and the raw tables should have same number of rows.")
+					break
+				}
+				s1 := strings.Join(r1, " ")
+				s2 := strings.Join(r2, " ")
+				suite.Equal(s2, s1, "%s \n\t!= %s", s1, s2)
+			}
+		}
+	}
 }
 
 func (suite *SuiteTester) TestListBranches() {
