@@ -192,13 +192,29 @@ func (doopdb *DoopDb) Clean() error {
 Query interface
 */
 func (doopdb *DoopDb) Query(branchName string, sql string, args ...interface{}) (*sql.Rows, error) {
-	//hsec
+	tables, err := doopdb.GetTableSchema(branchName)
+	if err != nil {
+		return nil, err
+	}
+
+	//Only handle SELECT
+	sql_parsed, err := doopdb.sql_parser.Parse(sql)
+	if err != nil {
+		return nil, err
+	}
+	if sql_parsed.Op != "SELECT" {
+		msg := fmt.Sprint("invalid sql has been parsed: %s", sql)
+		return nil, errors.New(msg)
+	}
+
+	//rewrite sql
 	rewriter := func(origin string) string {
 		prefix := branchName
 		suffix := DOOP_SUFFIX_VIEW
 		return ConcreteName(origin, prefix, suffix)
 	}
-	rewritten_sql := doopdb.sql_parser.Rewrite(sql, rewriter, doopdb.GetTableSchema(branchName))
+
+	rewritten_sql := doopdb.sql_parser.Rewrite(sql, rewriter, tables)
 	rows, err := doopdb.adapter.Query(rewritten_sql, args...)
 	return rows, err
 }
@@ -220,18 +236,22 @@ func (doopdb *DoopDb) GetAllTableSchema() (map[string]string, error) {
 }
 
 //argument is not supported yet
-func (doopdb *DoopDb) GetTableSchema(branchName string) map[string]string {
+func (doopdb *DoopDb) GetTableSchema(branchName string) (map[string]string, error) {
 	tables, ok := doopdb.branchTables[branchName]
 	if ok {
-		return tables
+		return tables, nil
 	}
 	//find out the name of tables in default branch
+	//TODO currently all branches share same logical tables; each branch should have its own table space in the future
 	statement := fmt.Sprintf(`
 		SELECT tbl_name, sql FROM %s WHERE branch=? AND tbl_type=?
 	`, DOOP_MASTER)
 	rows, err := doopdb.adapter.Query(statement, DOOP_DEFAULT_BRANCH, "logical_table")
+	if err != nil {
+		msg := fmt.Sprintf("fail to get logical tables of branch %s. Error: %s", branchName, err.Error())
+		return nil, errors.New(msg)
+	}
 	defer rows.Close()
-	HandleError(err)
 
 	ret := make(map[string]string)
 	for rows.Next() {
@@ -241,8 +261,12 @@ func (doopdb *DoopDb) GetTableSchema(branchName string) map[string]string {
 		HandleError(err)
 		ret[name] = sql
 	}
+	if len(ret) == 0 {
+		msg := fmt.Sprintf("branch %s: has not been initialized yet", branchName)
+		return nil, errors.New(msg)
+	}
 	doopdb.branchTables[branchName] = ret
-	return ret
+	return ret, nil
 }
 
 func (doopdb *DoopDb) Close() error {
@@ -257,16 +281,20 @@ func (doopdb *DoopDb) Close() error {
 
 */
 // ListBranches returns the list of all the branches for the given database
-func (doopdb *DoopDb) ListBranches() []string {
+func (doopdb *DoopDb) ListBranches() ([]string, error) {
 	rt := make([]string, 0, 16)
 	rows, err := doopdb.adapter.Query(`SELECT name FROM ` + DOOP_TABLE_BRANCH + `;`)
-	HandleError(err)
+	if err != nil {
+		msg := fmt.Sprintf("fail to query DOOP_TABLE_BRANCH. Error: %s", err.Error())
+		return nil, errors.New(msg)
+	}
+	defer rows.Close()
 	for rows.Next() {
 		var name string
 		rows.Scan(&name)
 		rt = append(rt, name)
 	}
-	return rt
+	return rt, nil
 }
 
 // RemoveBranch deletes a branch
@@ -287,15 +315,21 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 		return false, errors.New("Parent branch name is not specified.")
 	}
 	// insert a row with branch and its parent name along with metadata (empty json object for now)
-	HandleErrorAny(doopdb.adapter.
-		Exec(`INSERT INTO `+DOOP_TABLE_BRANCH+` (name, parent, metadata) VALUES (?, ?, '{}')`, branchName, parentBranch))
+	_, err := doopdb.adapter.Exec(`INSERT INTO `+DOOP_TABLE_BRANCH+` (name, parent, metadata) VALUES (?, ?, '{}')`, branchName, parentBranch)
+	if err != nil {
+		msg := fmt.Sprintf("fail to create %s table. Error: %s", DOOP_TABLE_BRANCH, err.Error())
+		return false, errors.New(msg)
+	}
 
 	//get all tables in parent branch
 	//if no parent branch(we are creating master branch), then just say parent branch is current branch
 	if branchName == DOOP_DEFAULT_BRANCH {
 		parentBranch = branchName
 	}
-	tables := doopdb.GetTableSchema(parentBranch)
+	tables, err := doopdb.GetTableSchema(parentBranch)
+	if err != nil {
+		return false, err
+	}
 
 	//create companian tables for each logical table
 	for tableName, schema := range tables {

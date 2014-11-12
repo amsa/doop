@@ -46,8 +46,8 @@ func (suite *SuiteTester) TestMasterTable() {
 	err = suite.db.createMaster()
 	assert.Nil(suite.T(), err)
 
-	tables := suite.db.GetTableSchema("master") //the argument is not supported yet
-
+	tables, err := suite.db.GetTableSchema(DOOP_DEFAULT_BRANCH) //the argument is not supported yet
+	suite.Nil(err)
 	assert.NotEmpty(suite.T(), tables)
 
 	for tableName, sql := range tables {
@@ -101,7 +101,8 @@ func (suite *SuiteTester) TestInit() {
 	assert.Nil(suite.T(), err)
 
 	//get logical table
-	tables := suite.db.GetTableSchema("")
+	tables, err := suite.db.GetTableSchema(DOOP_DEFAULT_BRANCH)
+	suite.Nil(err)
 	assert.NotEmpty(suite.T(), tables)
 
 	//shoud be same as original setting
@@ -241,9 +242,10 @@ func (suite *SuiteTester) TestListBranches() {
 	suite.db.Init()
 
 	//should have 1 branch
-	branches := suite.db.ListBranches()
+	branches, err := suite.db.ListBranches()
+	suite.Nil(err)
 	suite.Equal(1, len(branches))
-	suite.Equal("master", branches[0])
+	suite.Equal(DOOP_DEFAULT_BRANCH, branches[0])
 
 	//create branch
 	//should give error
@@ -257,9 +259,41 @@ func (suite *SuiteTester) TestListBranches() {
 	suite.Nil(err)
 
 	//should have 2 branches
-	branches = suite.db.ListBranches()
+	branches, err = suite.db.ListBranches()
+	suite.Nil(err)
 	suite.Equal(2, len(branches))
 	suite.Equal(new_branch, branches[1])
+}
+
+func (suite *SuiteTester) TestQuery() {
+	//original setting
+	original_tables, err := suite.db.GetAllTableSchema()
+	assert.NotEmpty(suite.T(), original_tables)
+	assert.Nil(suite.T(), err)
+
+	//init
+	suite.db.Init()
+
+	//test error handling
+	for t, _ := range original_tables {
+		//it's query an non-exist branch, it shoud give an error indicating the table does not exist
+		statement := fmt.Sprintf("SELECT * FROM %s", t)
+		rows, err := suite.db.Query("non_exist", statement)
+		suite.NotNil(err)
+		if rows != nil {
+			rows.Close()
+		}
+
+		//INSERT should give an error
+		statement = fmt.Sprintf("INSERT INTO %s VALUES (AA, BB, CC)") //values do not matter here
+		rows, err = suite.db.Query(DOOP_DEFAULT_BRANCH, statement)
+		suite.NotNil(err)
+		if rows != nil {
+			rows.Close()
+		}
+	}
+
+	//test limited queries
 }
 
 func (suite *SuiteTester) TestRemoveBranch() {
