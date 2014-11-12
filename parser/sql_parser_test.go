@@ -21,6 +21,11 @@ func TestBasicSelectRewrite(t *testing.T) {
 	actual := parser.Rewrite(raw, rewriter, candidates)
 	expected := "SELECT * FROM __branch_t1_logical WHERE __branch_t1_logical.name == ?"
 	assert.Equal(t, expected, actual)
+
+	raw = "SELECT * FROM t1"
+	actual = parser.Rewrite(raw, rewriter, candidates)
+	expected = "SELECT * FROM __branch_t1_logical"
+	assert.Equal(t, expected, actual)
 }
 
 func TestComplexSelectRewrite(t *testing.T) {

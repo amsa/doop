@@ -66,7 +66,11 @@ func (sqlParser *SqlParser) Rewrite(origin string, rewriter Rewriter, target map
 			lastToken.WriteRune(c)
 		}
 	}
-	buffer.WriteString(lastToken.String())
+	word := lastToken.String()
+	if _, ok := target[word]; ok {
+		word = rewriter(word)
+	}
+	buffer.WriteString(word)
 	return buffer.String()
 }
 
