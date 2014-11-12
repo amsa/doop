@@ -43,7 +43,7 @@ type DoopDb struct {
 	info         *DoopDbInfo
 	adapter      adapter.Adapter
 	branchTables map[string]map[string]string
-	sql_parser   *parser.SqlParser
+	sqlParser    *parser.SqlParser
 }
 
 func MakeDoopDb(info *DoopDbInfo) *DoopDb {
@@ -101,10 +101,13 @@ func (doopdb *DoopDb) createMaster() error {
 	return nil
 }
 
-func (doopdb *DoopDb) destroyMaster() error {
-	statement := fmt.Sprintf(`DROP TABLE %s`, DOOP_MASTER)
-	_, err := doopdb.adapter.Exec(statement)
+func (doopdb *DoopDb) dropTable(tableName string) error {
+	_, err := doopdb.adapter.Exec(fmt.Sprintf(`DROP TABLE %s;`, tableName))
 	return err
+}
+
+func (doopdb *DoopDb) destroyMaster() error {
+	return doopdb.dropTable(DOOP_MASTER)
 }
 
 func (doopdb *DoopDb) createBranchTable() error {
@@ -126,11 +129,7 @@ func (doopdb *DoopDb) createBranchTable() error {
 }
 
 func (doopdb *DoopDb) destroyBranchTable() error {
-	_, err := doopdb.adapter.Exec("DROP TABLE " + DOOP_TABLE_BRANCH)
-	if err != nil {
-		return err
-	}
-	return nil
+	return doopdb.dropTable(DOOP_TABLE_BRANCH)
 }
 
 /*
@@ -198,13 +197,12 @@ func (doopdb *DoopDb) Query(branchName string, sql string, args ...interface{}) 
 	}
 
 	//Only handle SELECT
-	sql_parsed, err := doopdb.sql_parser.Parse(sql)
+	sql_parsed, err := doopdb.sqlParser.Parse(sql)
 	if err != nil {
 		return nil, err
 	}
 	if sql_parsed.Op != "SELECT" {
-		msg := fmt.Sprint("invalid sql has been parsed: %s", sql)
-		return nil, errors.New(msg)
+		return nil, errors.New(fmt.Sprintf("Invalid sql has been passed to Query: %s", sql))
 	}
 
 	//rewrite sql
@@ -214,7 +212,7 @@ func (doopdb *DoopDb) Query(branchName string, sql string, args ...interface{}) 
 		return ConcreteName(origin, prefix, suffix)
 	}
 
-	rewritten_sql := doopdb.sql_parser.Rewrite(sql, rewriter, tables)
+	rewritten_sql := doopdb.sqlParser.Rewrite(sql, rewriter, tables)
 	rows, err := doopdb.adapter.Query(rewritten_sql, args...)
 	return rows, err
 }
@@ -223,8 +221,30 @@ func (doopdb *DoopDb) Query(branchName string, sql string, args ...interface{}) 
 Exec interface
 */
 
-func (doopDb *DoopDb) Exec(branchName string, sql string, args ...interface{}) (sql.Result, error) {
-	return nil, nil
+func (doopdb *DoopDb) Exec(branchName string, sql string, args ...interface{}) (sql.Result, error) {
+	tables, err := doopdb.GetTableSchema(branchName)
+	if err != nil {
+		return nil, err
+	}
+
+	sql_parsed, err := doopdb.sqlParser.Parse(sql)
+	if err != nil {
+		return nil, err
+	}
+
+	if sql_parsed.Op == "SELECT" {
+		return nil, errors.New(fmt.Sprintf("Invalid sql has been passed to Exec: %s", sql))
+	}
+
+	//rewrite sql
+	rewriter := func(origin string) string {
+		prefix := branchName
+		suffix := DOOP_SUFFIX_H
+		return ConcreteName(origin, prefix, suffix)
+	}
+
+	rewrittenSql := doopdb.sqlParser.Rewrite(sql, rewriter, tables)
+	return doopdb.adapter.Exec(rewrittenSql, args...)
 }
 
 func (doopdb *DoopDb) GetSchema(branchName string, tableName string) ([]string, error) {
@@ -362,7 +382,7 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 		}
 
 		//vsec
-		//sql, err := sql_parser.Parse(schema)
+		//sql, err := sqlParser.Parse(schema)
 		//TODO finish schema parsing, them complete this part
 		//now it assume there is a column call "id" in all table
 		vsec_name := ConcreteName(tableName, branchName, DOOP_SUFFIX_V)
@@ -381,7 +401,7 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 			suffix := DOOP_SUFFIX_H
 			return ConcreteName(origin, prefix, suffix)
 		}
-		hsec := doopdb.sql_parser.Rewrite(schema, rewriter, tables)
+		hsec := doopdb.sqlParser.Rewrite(schema, rewriter, tables)
 
 		_, err = doopdb.adapter.Exec(hsec)
 

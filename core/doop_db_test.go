@@ -276,7 +276,7 @@ func (suite *SuiteTester) TestQuery() {
 
 	//test error handling
 	for t, _ := range original_tables {
-		//it's query an non-exist branch, it shoud give an error indicating the table does not exist
+		//it's query a non-exist branch, it shoud give an error indicating the table does not exist
 		statement := fmt.Sprintf("SELECT * FROM %s", t)
 		rows, err := suite.db.Query("non_exist", statement)
 		suite.NotNil(err)
@@ -294,6 +294,22 @@ func (suite *SuiteTester) TestQuery() {
 	}
 
 	//test limited queries
+}
+
+func (suite *SuiteTester) TestExec() {
+	tables, _ := suite.db.GetAllTableSchema()
+	suite.db.Init()
+
+	for t, _ := range tables {
+		//select is not valid operation for Exec
+		statement := fmt.Sprintf("SELECT * FROM %s", t)
+		_, err := suite.db.Exec("master", statement)
+		suite.NotNil(err)
+
+		statement = fmt.Sprintf("INSERT INTO %s VALUES (8, 10, 'baz');", t)
+		_, err = suite.db.Exec("master", statement)
+		suite.Nil(err)
+	}
 }
 
 func (suite *SuiteTester) TestRemoveBranch() {

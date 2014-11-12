@@ -36,7 +36,7 @@ Administration commands:
 
 Query command:
 ```
-- doopq <branch/db> <query> (e.g. doopq myfork@testdb "SELECT * FROM user)
+- doopq <branch@db> <query> (e.g. doopq myfork@testdb "SELECT * FROM user)
 ```
 
 DSN Format
