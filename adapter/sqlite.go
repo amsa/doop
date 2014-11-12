@@ -33,6 +33,7 @@ func (sqliteDb *SQLite) GetTableSchema() (map[string]string, error) {
 	ret := make(map[string]string)
 	query := "SELECT name, sql FROM sqlite_master WHERE type='table' AND tbl_name <> 'sqlite_sequence';"
 	rows, err := sqliteDb.db.Query(query)
+	defer rows.Close()
 	if err != nil {
 		return nil, err
 	}
