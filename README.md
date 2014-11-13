@@ -22,21 +22,17 @@ Doop is:
 
 Command-line interface
 =======================
-Administration commands:
+Available commands:
 ```
 - doop init <alias> <DSN> (e.g. doop init testdb sqlite://mytestdb.db)
 - doop list  [<alias>] (e.g. doop list [testdb])  -- if <alias> is passed the list of branches will be returned
 - doop rm -d <alias>  (e.g. doop rm -d testdb)
 - doop rm -b <branch@alias> (e.g. doop rm -b myfork@testdb)
+- doop run <branch@alias> <sql> (e.g. doop run myfork@testdb "SELECT * FROM users")
 - doop branch <alias> <new> <from> (e.g. doop branch testdb myfork test)
 - doop merge  <alias> <to> <from> (e.g. doop merge testdb test myfork)
 - doop stats [<alias>] (e.g. doop stats [testdb])
 - doop export [<branch@alias>] (e.g. doop export testdb@myfork)
-```
-
-Query command:
-```
-- doopq <branch@db> <query> (e.g. doopq myfork@testdb "SELECT * FROM user)
 ```
 
 DSN Format

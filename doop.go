@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/amsa/doop/common"
 	"github.com/amsa/doop/core"
@@ -14,6 +15,7 @@ func help() {
 	fmt.Println(`list of commands:
 	init			initialize a new Doop project
 	list			list all the objects (databases/branches)
+	run			    runs a given SQL expression on the specified branch
 	help			print this message`)
 
 	fmt.Println(`list of options:
@@ -41,9 +43,34 @@ func list(doop *core.Doop, args []string) {
 		}
 	} else { // show the list of branches for the given database
 		fmt.Printf("List of branches for `%s`:", args[0])
-		for _, branch := range doop.GetDoopDb(args[0]).ListBranches() {
+		branches, err := doop.GetDoopDb(args[0]).ListBranches()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		for _, branch := range branches {
 			fmt.Println("    " + branch)
 		}
+	}
+}
+
+func run(doop *core.Doop, args []string) {
+	if len(args) < 2 {
+		fmt.Println("Too few arguments passed. usage: run <branch@db> <sql> (e.g. doop run mybranch@mydb SELECT * FROM user)")
+		return
+	}
+
+	branchInfo := strings.Split(args[0], "@")
+	if len(branchInfo) != 2 {
+		fmt.Println("Invalid branch info format. It should be like branch@db")
+		return
+	}
+	sql := strings.Join(args[1:], " ")
+	sqlOp := strings.SplitN(sql, " ", 2)
+	if strings.ToUpper(sqlOp[0]) == "SELECT" {
+		fmt.Println(doop.GetDoopDb(branchInfo[1]).Query(branchInfo[0], sql))
+	} else {
+		fmt.Println(doop.GetDoopDb(branchInfo[1]).Exec(branchInfo[0], sql))
 	}
 }
 
@@ -83,6 +110,8 @@ func main() {
 		list(doop, args[2:])
 	case "rm":
 		remove(doop, args[2:])
+	case "run":
+		run(doop, args[2:])
 	default:
 		fmt.Errorf("Invalid command: %s", os.Args[1])
 	}

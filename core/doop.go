@@ -153,7 +153,7 @@ func (doop *Doop) TrackDb(dbName string, dsn string) (bool, error) {
 
 		err := doopdb.Init()
 		if err != nil {
-			return false, errors.New("Fail to initialize the database")
+			return false, errors.New("Fail to initialize the database: " + err.Error())
 		} else {
 			return true, nil
 		}

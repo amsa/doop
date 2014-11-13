@@ -385,7 +385,8 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 		//sql, err := sqlParser.Parse(schema)
 		//TODO finish schema parsing, them complete this part
 		//now it assume there is a column call "id" in all table
-		vsec_name := ConcreteName(tableName, branchName, DOOP_SUFFIX_V)
+
+		/*vsec_name := ConcreteName(tableName, branchName, DOOP_SUFFIX_V)
 		vsec := fmt.Sprintf(`
 			CREATE TABLE %s AS SELECT id FROM %s
 		`, vsec_name, tableName)
@@ -393,7 +394,7 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 		if err != nil {
 			msg := fmt.Sprintf("failed to execute \n%s\n: %s", vsec, err.Error())
 			return false, errors.New(msg)
-		}
+		}*/
 
 		//hsec
 		rewriter := func(origin string) string {
