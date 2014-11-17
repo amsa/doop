@@ -38,7 +38,7 @@ func SetupDb(dbName string) {
 	err := cmd.Run()
 
 	if err != nil {
-		fmt.Println("Fail to setup test database...")
+		fmt.Println("Fail to setup test database: " + err.Error())
 		panic(err)
 	}
 }
