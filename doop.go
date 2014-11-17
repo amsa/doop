@@ -7,6 +7,7 @@ import (
 
 	"github.com/amsa/doop/common"
 	"github.com/amsa/doop/core"
+	"github.com/olekukonko/tablewriter"
 )
 
 func help() {
@@ -14,12 +15,31 @@ func help() {
 
 	fmt.Println(`list of commands:
 	init			initialize a new Doop project
+	branch			create a new branch
 	list			list all the objects (databases/branches)
 	run			    runs a given SQL expression on the specified branch
 	help			print this message`)
 
 	fmt.Println(`list of options:
 	-v			enable verbose mode`)
+}
+
+func branch(doop *core.Doop, args []string) {
+	if len(args) < 2 { // at least two arguments should be passed
+		fmt.Println("Too few arguments passed. usage: doop branch <alias> <new> [<from>] (e.g. doop branch mydb newbranch)")
+		return
+	}
+
+	parentBranch := "master"
+	if len(args) == 3 {
+		parentBranch = args[2]
+	}
+	_, err := doop.GetDoopDb(args[0]).CreateBranch(args[1], parentBranch)
+	if err == nil {
+		fmt.Printf("New branch '%s' has been created successfully.\n", args[1])
+	} else {
+		fmt.Println(err.Error())
+	}
 }
 
 func initialize(doop *core.Doop, args []string) {
@@ -68,9 +88,36 @@ func run(doop *core.Doop, args []string) {
 	sql := strings.Join(args[1:], " ")
 	sqlOp := strings.SplitN(sql, " ", 2)
 	if strings.ToUpper(sqlOp[0]) == "SELECT" {
-		fmt.Println(doop.GetDoopDb(branchInfo[1]).Query(branchInfo[0], sql))
+		results, _ := doop.GetDoopDb(branchInfo[1]).Query(branchInfo[0], sql)
+		cols, _ := results.Columns()
+
+		// create table writer to write to stdout
+		table := tablewriter.NewWriter(os.Stdout)
+
+		// table header
+		table.SetHeader(cols)
+
+		// print the table contents
+		next, _ := common.RowToStrings(results)
+		row, _ := next()
+		for row != nil {
+			table.Append(row)
+			row, _ = next()
+		}
+		results.Close()
+
+		table.Render() // print out the table
 	} else {
-		fmt.Println(doop.GetDoopDb(branchInfo[1]).Exec(branchInfo[0], sql))
+		results, err := doop.GetDoopDb(branchInfo[1]).Exec(branchInfo[0], sql)
+		if err == nil {
+			rowsAffected, _ := results.RowsAffected()
+			fmt.Println("Number of affected rows: " + string(rowsAffected))
+
+			lastId, _ := results.LastInsertId()
+			fmt.Println("Last row ID: " + string(lastId))
+		} else {
+			fmt.Println(err.Error())
+		}
 	}
 }
 
@@ -108,6 +155,8 @@ func main() {
 		initialize(doop, args[2:])
 	case "list":
 		list(doop, args[2:])
+	case "branch":
+		branch(doop, args[2:])
 	case "rm":
 		remove(doop, args[2:])
 	case "run":

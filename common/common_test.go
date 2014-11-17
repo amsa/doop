@@ -7,11 +7,13 @@ package common
 
 import (
 	//"fmt"
+
+	"testing"
+
 	"github.com/amsa/doop/adapter"
 	"github.com/amsa/doop/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"testing"
 )
 
 type SuiteTester struct {

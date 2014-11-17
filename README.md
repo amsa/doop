@@ -29,7 +29,7 @@ Available commands:
 - doop rm -d <alias>  (e.g. doop rm -d testdb)
 - doop rm -b <branch@alias> (e.g. doop rm -b myfork@testdb)
 - doop run <branch@alias> <sql> (e.g. doop run myfork@testdb "SELECT * FROM users")
-- doop branch <alias> <new> <from> (e.g. doop branch testdb myfork test)
+- doop branch <alias> <new> [<from>] (e.g. doop branch testdb myfork test) -- if from is not given the default value is master
 - doop merge  <alias> <to> <from> (e.g. doop merge testdb test myfork)
 - doop stats [<alias>] (e.g. doop stats [testdb])
 - doop export [<branch@alias>] (e.g. doop export testdb@myfork)
@@ -43,6 +43,11 @@ There is a standard format for DSN to connect to different databases:
 - mysql:      mysql://username:password@address/dbname?param=value
 - postgres:   postgresql://username:password@address/dbname?param=value
 ```
+
+Required packages
+================
+- [TableWriter](https://github.com/olekukonko/tablewriter)
+- [Testify](https://github.com/stretchr/testify) (only for running tests)
 
 Contributors
 ============
