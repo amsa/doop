@@ -3,4 +3,4 @@ if [ $1 ]; then
 fi
 
 go test -bench . $OPT ./bench
-rm -rf ./bench/test_db
+rm -rf ./bench/test_db*
