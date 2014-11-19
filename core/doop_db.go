@@ -31,6 +31,7 @@ const (
 	DOOP_SUFFIX_V        = "v"    //v section
 	DOOP_SUFFIX_H        = "h"    //h section
 	DOOP_SUFFIX_VIEW     = "view" //view section
+	DOOP_DEFAULT_META    = "{}"
 )
 
 type DoopDbInfo struct {
@@ -101,6 +102,10 @@ func (doopdb *DoopDb) createMaster() error {
 	return nil
 }
 
+func (doopdb *DoopDb) getParentBranch(branchName string) (string, error) {
+
+	return "", nil
+}
 func (doopdb *DoopDb) dropTable(tableName string) error {
 	_, err := doopdb.adapter.Exec(fmt.Sprintf(`DROP TABLE %s;`, tableName))
 	return err
@@ -334,7 +339,12 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 		return false, errors.New("Parent branch name is not specified.")
 	}
 	// insert a row with branch and its parent name along with metadata (empty json object for now)
-	_, err := doopdb.adapter.Exec(`INSERT INTO `+DOOP_TABLE_BRANCH+` (name, parent, metadata) VALUES (?, ?, '{}')`, branchName, parentBranch)
+	statement := fmt.Sprintf(`INSERT INTO %s (name, parent, metadata) VALUES (
+		?, 
+		?,	
+	    ?	
+	)`, DOOP_TABLE_BRANCH)
+	_, err := doopdb.adapter.Exec(statement, branchName, parentBranch, DOOP_DEFAULT_META)
 	if err != nil {
 		msg := fmt.Sprintf("fail to create %s table. Error: %s", DOOP_TABLE_BRANCH, err.Error())
 		return false, errors.New(msg)
