@@ -265,7 +265,7 @@ func (suite *SuiteTester) TestListBranches() {
 	suite.Equal(new_branch, branches[1])
 }
 
-func (suite *SuiteTester) TestQuery() {
+func (suite *SuiteTester) TestQueryBasic() {
 	//original setting
 	original_tables, err := suite.db.GetAllTableSchema()
 	assert.NotEmpty(suite.T(), original_tables)
@@ -296,7 +296,7 @@ func (suite *SuiteTester) TestQuery() {
 	//test limited queries
 }
 
-func (suite *SuiteTester) TestExec() {
+func (suite *SuiteTester) TestExecBasic() {
 	tables, _ := suite.db.GetAllTableSchema()
 	suite.db.Init()
 

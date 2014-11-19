@@ -460,9 +460,21 @@ func (doopdb *DoopDb) CreateLogicalView(branchName string, tableName string) (bo
 	hsec := ConcreteName(tableName, branchName, DOOP_SUFFIX_H)
 
 	// TODO: complete the view to incorporate all the elements including vdel, hdel and etc.
+
+	//Now the first part is not the base table, but the logical view of the table in parent branch
+	parentBranch, err := doopdb.getParentBranch(branchName)
+	if err != nil {
+		return false, err
+	}
+	var parentLogicalView string
+	if parentBranch == DOOP_NULL_BRANCH {
+		parentLogicalView = tableName
+	} else {
+		parentLogicalView = ConcreteName(tableName, parentBranch, DOOP_SUFFIX_VIEW)
+	}
 	viewCreationSql := fmt.Sprintf(`CREATE VIEW %s AS 
-		SELECT * FROM %s UNION SELECT * FROM %s;`, viewName, tableName, hsec)
-	_, err := doopdb.adapter.Exec(viewCreationSql)
+		SELECT * FROM %s UNION SELECT * FROM %s;`, viewName, parentLogicalView, hsec)
+	_, err = doopdb.adapter.Exec(viewCreationSql)
 	if err != nil {
 		return false, err
 	}
