@@ -312,6 +312,47 @@ func (suite *SuiteTester) TestExec() {
 	}
 }
 
+func (suite *SuiteTester) TestGetParentBranch() {
+	//init db
+	suite.db.Init()
+
+	//test default branch creation
+	parentBranch, err := suite.db.getParentBranch(DOOP_DEFAULT_BRANCH)
+	if err != nil {
+		suite.Fail(err.Error())
+		return
+	}
+	suite.Equal(DOOP_NULL_BRANCH, parentBranch)
+
+	//new branch
+	branchName := "newBranch"
+	ok, err := suite.db.CreateBranch(branchName, DOOP_DEFAULT_BRANCH)
+	if err != nil {
+		suite.Fail(err.Error())
+	}
+	suite.True(ok)
+	parentBranch, err = suite.db.getParentBranch(branchName)
+	if err != nil {
+		suite.Fail(err.Error())
+		return
+	}
+	suite.Equal(DOOP_DEFAULT_BRANCH, parentBranch)
+
+	//newer branch
+	branchNameAgain := "newerBranch"
+	ok, err = suite.db.CreateBranch(branchNameAgain, branchName)
+	if err != nil {
+		suite.Fail(err.Error())
+	}
+	suite.True(ok)
+	parentBranch, err = suite.db.getParentBranch(branchNameAgain)
+	if err != nil {
+		suite.Fail(err.Error())
+		return
+	}
+	suite.Equal(branchName, parentBranch)
+}
+
 func (suite *SuiteTester) TestRemoveBranch() {
 
 }

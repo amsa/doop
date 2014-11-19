@@ -32,6 +32,7 @@ const (
 	DOOP_SUFFIX_H        = "h"    //h section
 	DOOP_SUFFIX_VIEW     = "view" //view section
 	DOOP_DEFAULT_META    = "{}"
+	DOOP_NULL_BRANCH     = "INIT" //the branch before master branch
 )
 
 type DoopDbInfo struct {
@@ -103,8 +104,32 @@ func (doopdb *DoopDb) createMaster() error {
 }
 
 func (doopdb *DoopDb) getParentBranch(branchName string) (string, error) {
+	statement := fmt.Sprintf(`
+		SELECT parent FROM %s WHERE 
+			name = ?
+			`, DOOP_TABLE_BRANCH)
+	rows, err := doopdb.adapter.Query(statement, branchName)
+	if err != nil {
+		msg := fmt.Sprintf("failed to get parent branch of branch %s. Error: %s", branchName, err.Error())
+		return "", errors.New(msg)
+	}
+	defer rows.Close()
 
-	return "", nil
+	cnt := 0
+	var parentBranch string
+	for rows.Next() {
+		cnt += 1
+		if cnt > 1 {
+			msg := fmt.Sprintf("branch %s should not have more than one parent branch.", branchName)
+			return "", errors.New(msg)
+		}
+		rows.Scan(&parentBranch)
+	}
+	if parentBranch == "" {
+		msg := fmt.Sprintf("fail to scan for parentBranch")
+		return "", errors.New(msg)
+	}
+	return parentBranch, nil
 }
 func (doopdb *DoopDb) dropTable(tableName string) error {
 	_, err := doopdb.adapter.Exec(fmt.Sprintf(`DROP TABLE %s;`, tableName))
@@ -162,7 +187,7 @@ func (doopdb *DoopDb) Init() error {
 	}
 
 	// Create default branch
-	_, err = doopdb.CreateBranch(DOOP_DEFAULT_BRANCH, "")
+	_, err = doopdb.CreateBranch(DOOP_DEFAULT_BRANCH, DOOP_NULL_BRANCH)
 	if err != nil {
 		msg := fmt.Sprintf("failed to create default branch : %s", err.Error())
 		return errors.New(msg)
@@ -346,7 +371,7 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 	)`, DOOP_TABLE_BRANCH)
 	_, err := doopdb.adapter.Exec(statement, branchName, parentBranch, DOOP_DEFAULT_META)
 	if err != nil {
-		msg := fmt.Sprintf("fail to create %s table. Error: %s", DOOP_TABLE_BRANCH, err.Error())
+		msg := fmt.Sprintf("fail to add entry into %s table. Error: %s", DOOP_TABLE_BRANCH, err.Error())
 		return false, errors.New(msg)
 	}
 
