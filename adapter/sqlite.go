@@ -26,6 +26,10 @@ func (sqliteDb *SQLite) DropDb() (bool, error) {
 	return false, err
 }
 
+func (sqliteDb *SQLite) CreateDb() (bool, error) {
+	return true, nil
+}
+
 func (sqliteDb *SQLite) Close() error {
 	return sqliteDb.db.Close()
 }

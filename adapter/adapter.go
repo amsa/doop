@@ -26,8 +26,9 @@ func (database *Database) Exec(sql string, args ...interface{}) (sql.Result, err
 }*/
 
 type Adapter interface {
-	Close() error
+	CreateDb() (bool, error)
 	DropDb() (bool, error)
+	Close() error
 	Query(sql string, args ...interface{}) (*sql.Rows, error)
 	Exec(sql string, args ...interface{}) (sql.Result, error)
 	GetTableSchema() (map[string]string, error) //return all tables
@@ -43,6 +44,8 @@ func GetAdapter(dsn string) Adapter {
 	switch strings.ToLower(DsnChunks[0]) {
 	case "sqlite":
 		db, _ = MakeSQLite(DsnChunks[1])
+	case "mysql":
+		db, _ = MakeMySQL(DsnChunks[1])
 	default:
 		panic("Invalid database connection: " + dsn)
 	}

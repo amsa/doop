@@ -1,9 +1,11 @@
-package bench
+package mysql
 
 /*
 tests for doop_db.go
 */
 import (
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/amsa/doop/adapter"
@@ -15,20 +17,32 @@ var dbAdapter1 adapter.Adapter
 var dbAdapter2 adapter.Adapter
 
 func init() {
-	dbPath1 := "test_db1"
-	dbPath2 := "test_db2"
+	db1 := "mysql://root:@/doop_test_bench1"
+	db2 := "mysql://root:@/doop_test_bench2"
 
-	dbAdapter1 = adapter.GetAdapter("sqlite://" + dbPath1)
-	dbAdapter2 = adapter.GetAdapter("sqlite://" + dbPath2)
+	dbAdapter1 = adapter.GetAdapter(db1)
+	dbAdapter2 = adapter.GetAdapter(db2)
 
 	dbAdapter1.DropDb()
 	dbAdapter2.DropDb()
 
+	dbAdapter1.CreateDb()
+	dbAdapter2.CreateDb()
+
+	// reset the connection
+	dbAdapter1 = adapter.GetAdapter(db1)
+	dbAdapter2 = adapter.GetAdapter(db2)
+
 	adapter.SetupDb(dbAdapter1)
 	adapter.SetupDb(dbAdapter2)
 
-	db = core.MakeDoopDb(&core.DoopDbInfo{"sqlite://" + dbPath1, dbPath1, ""})
-	db.Init()
+	db = core.MakeDoopDb(&core.DoopDbInfo{db1, "", ""})
+	err := db.Init()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
 	db.CreateBranch("branch1", "master")
 	db.Exec("branch1", "INSERT INTO t1 VALUES(1827, 8718, 'test branch1')")
 	db.Exec("master", "INSERT INTO t1 VALUES(1927, 7718, 'test master')")
