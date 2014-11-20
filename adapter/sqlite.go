@@ -2,6 +2,7 @@ package adapter
 
 import (
 	"database/sql"
+	"os/exec"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -15,6 +16,14 @@ func MakeSQLite(databasePath string, args ...interface{}) (Adapter, error) {
 	db, err := sql.Open("sqlite3", databasePath)
 	ret := Adapter(&SQLite{databasePath, db})
 	return ret, err
+}
+
+func (sqliteDb *SQLite) DropDb() (bool, error) {
+	err := exec.Command("rm", "-rf", sqliteDb.dbPath).Run()
+	if err == nil {
+		return true, nil
+	}
+	return false, err
 }
 
 func (sqliteDb *SQLite) Close() error {

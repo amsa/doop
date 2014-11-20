@@ -7,31 +7,24 @@ description: test for adapter adapter
 */
 import (
 	"fmt"
+	"testing"
+
 	"github.com/amsa/doop/common"
-	"github.com/amsa/doop/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"testing"
 )
 
 type SuiteTester struct {
 	suite.Suite
 	adapter Adapter
-	dsn     string
-	db_path string
 }
 
 func (suite *SuiteTester) SetupSuite() {
-	suite.dsn = "sqlite://test_db"
-	suite.db_path = "test_db"
-	test.SetupDb(suite.db_path)
-	adpt := GetAdapter(suite.dsn)
-	suite.adapter = adpt
+	SetupDb(suite.adapter)
 }
 
 func (suite *SuiteTester) TearDownSuite() {
-	suite.adapter.Close()
-	test.CleanDb(suite.db_path)
+	CleanDb(suite.adapter)
 }
 
 func (suite *SuiteTester) TestGetTableSchema() {
@@ -115,5 +108,10 @@ func (suite *SuiteTester) TestQuery() {
 
 func TestRunSuite(t *testing.T) {
 	suiteTester := new(SuiteTester)
+	suiteTester.adapter = GetAdapter("sqlite://test_db")
+
 	suite.Run(t, suiteTester)
+
+	suiteTester.adapter.Close()
+	suiteTester.adapter.DropDb()
 }

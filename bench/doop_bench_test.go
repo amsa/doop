@@ -8,21 +8,24 @@ import (
 
 	"github.com/amsa/doop/adapter"
 	"github.com/amsa/doop/core"
-	"github.com/amsa/doop/test"
 )
 
 var db *core.DoopDb
-var dbAdapter adapter.Adapter
+var dbAdapter1 adapter.Adapter
+var dbAdapter2 adapter.Adapter
 
 func init() {
 	dbPath1 := "test_db1"
 	dbPath2 := "test_db2"
 
-	test.CleanDb(dbPath1)
-	test.CleanDb(dbPath2)
+	dbAdapter1 = adapter.GetAdapter("sqlite://" + dbPath1)
+	dbAdapter2 = adapter.GetAdapter("sqlite://" + dbPath2)
 
-	test.SetupDb(dbPath1)
-	test.SetupDb(dbPath2)
+	dbAdapter1.DropDb()
+	dbAdapter2.DropDb()
+
+	adapter.SetupDb(dbAdapter1)
+	adapter.SetupDb(dbAdapter2)
 
 	db = core.MakeDoopDb(&core.DoopDbInfo{"sqlite://" + dbPath1, dbPath1, ""})
 	db.Init()
@@ -30,8 +33,7 @@ func init() {
 	db.Exec("branch1", "INSERT INTO t1 VALUES(1827, 8718, 'test branch1')")
 	db.Exec("master", "INSERT INTO t1 VALUES(1927, 7718, 'test master')")
 
-	dbAdapter = adapter.GetAdapter("sqlite://" + dbPath2)
-	dbAdapter.Exec("INSERT INTO t1 VALUES(2000, 6281, 'test adapter')")
+	dbAdapter2.Exec("INSERT INTO t1 VALUES(2000, 6281, 'test adapter')")
 }
 
 func BenchmarkQueryBranch(b *testing.B) {
@@ -42,6 +44,6 @@ func BenchmarkQueryBranch(b *testing.B) {
 
 func BenchmarkQueryNoBranch(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		dbAdapter.Query("SELECT * FROM t1")
+		dbAdapter2.Query("SELECT * FROM t1")
 	}
 }
