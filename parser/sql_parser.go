@@ -43,7 +43,7 @@ func isSpace(c rune) bool {
 }
 
 func isDelimiter(c rune) bool {
-	delimiters := map[rune]bool{',': true, '.': true}
+	delimiters := map[rune]bool{',': true, '.': true, '`': true}
 	_, ok := delimiters[c]
 	return ok
 }

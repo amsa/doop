@@ -68,14 +68,13 @@ func (doopdb *DoopDb) createMaster() error {
 	}
 
 	// Create doop_master table to store metadata of all tables
-	statement := fmt.Sprintf(`
-			CREATE TABLE %s (
+	statement := fmt.Sprintf(`CREATE TABLE %s (
 				id integer NOT NULL PRIMARY KEY,
 				tbl_name text,
 				tbl_type text,
 				branch text,
-				sql text
-			);`, DOOP_MASTER)
+				schema_sql text
+			)`, DOOP_MASTER)
 	_, err = doopdb.adapter.Exec(statement)
 	if err != nil {
 		return errors.New("failed to create table: " + err.Error())
@@ -293,7 +292,7 @@ func (doopdb *DoopDb) GetTableSchema(branchName string) (map[string]string, erro
 	//find out the name of tables in default branch
 	//TODO currently all branches share same logical tables; each branch should have its own table space in the future
 	statement := fmt.Sprintf(`
-		SELECT tbl_name, sql FROM %s WHERE branch=? AND tbl_type=?
+		SELECT tbl_name, schema_sql FROM %s WHERE branch=? AND tbl_type=?
 	`, DOOP_MASTER)
 	rows, err := doopdb.adapter.Query(statement, DOOP_DEFAULT_BRANCH, "logical_table")
 	if err != nil {
@@ -311,7 +310,7 @@ func (doopdb *DoopDb) GetTableSchema(branchName string) (map[string]string, erro
 		ret[name] = sql
 	}
 	if len(ret) == 0 {
-		msg := fmt.Sprintf("branch %s: has not been initialized yet", branchName)
+		msg := fmt.Sprintf("branch %s has not been initialized yet", branchName)
 		return nil, errors.New(msg)
 	}
 	doopdb.branchTables[branchName] = ret
@@ -404,11 +403,7 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 		//TODO finish schema parsing, them complete this part
 		// Currently it defaultly use integer as the type of the key
 		hdel_name := ConcreteName(tableName, branchName, DOOP_SUFFIX_HD)
-		hdel := fmt.Sprintf(`
-			CREATE TABLE %s (
-				key integer
-			)
-		`, hdel_name)
+		hdel := fmt.Sprintf("CREATE TABLE %s (id integer)", hdel_name)
 		_, err = doopdb.adapter.Exec(hdel)
 		if err != nil {
 			msg := fmt.Sprintf("failed to create hdel: %s", err.Error())

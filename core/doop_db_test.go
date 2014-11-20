@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/amsa/doop/adapter"
 	"github.com/amsa/doop/common"
-	"github.com/amsa/doop/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -18,25 +18,25 @@ import (
 type SuiteTester struct {
 	suite.Suite
 	db      *DoopDb
-	dsn     string
-	db_path string
+	adapter adapter.Adapter
+	dbName  string
 }
 
 func (suite *SuiteTester) SetupTest() {
-	suite.dsn = "sqlite://test_db"
-	suite.db_path = "test_db"
-	test.SetupDb(suite.db_path)
-	db := MakeDoopDb(&DoopDbInfo{suite.dsn, suite.db_path, ""})
-	suite.db = db
+	suite.dbName = "test_db"
+	suite.adapter = adapter.GetAdapter("sqlite://" + suite.dbName)
+	suite.db = MakeDoopDb(&DoopDbInfo{"sqlite://" + suite.dbName, suite.dbName, ""})
+	adapter.SetupDb(suite.adapter)
 }
 
 func (suite *SuiteTester) TearDownTest() {
-	suite.db.Close()
-	test.CleanDb(suite.db_path)
+	suite.adapter.Close()
+	suite.adapter.DropDb()
 }
 
 func TestRunSuite(t *testing.T) {
 	suiteTester := new(SuiteTester)
+
 	suite.Run(t, suiteTester)
 }
 

@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/amsa/doop/adapter"
-	"github.com/amsa/doop/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -20,25 +19,25 @@ type SuiteTester struct {
 	suite.Suite
 	adapter adapter.Adapter
 	dsn     string
-	db_path string
+	dbPath  string
 }
 
 func (suite *SuiteTester) SetupSuite() {
-	suite.dsn = "sqlite://test_db"
-	suite.db_path = "test_db"
-	test.SetupDb(suite.db_path)
-	adpt := adapter.GetAdapter(suite.dsn)
-	suite.adapter = adpt
+	adapter.SetupDb(suite.adapter)
 }
 
 func (suite *SuiteTester) TearDownSuite() {
-	suite.adapter.Close()
-	test.CleanDb(suite.db_path)
+	adapter.CleanDb(suite.adapter)
 }
 
 func TestRunSuite(t *testing.T) {
 	suiteTester := new(SuiteTester)
+	suiteTester.adapter = adapter.GetAdapter("sqlite://test_db")
+
 	suite.Run(t, suiteTester)
+
+	suiteTester.adapter.Close()
+	suiteTester.adapter.DropDb()
 }
 
 func (suite *SuiteTester) TestAddPrefix() {

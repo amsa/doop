@@ -5,7 +5,29 @@ import (
 	"strings"
 )
 
+/*type Database struct {
+	db *sql.DB
+}
+
+func (database *Database) SetDb(db *sql.DB) {
+	database.db = db
+}
+
+func (database *Database) Close() error {
+	return database.db.Close()
+}
+
+func (database *Database) Query(sql string, args ...interface{}) (*sql.Rows, error) {
+	return database.db.Query(sql, args...)
+}
+
+func (database *Database) Exec(sql string, args ...interface{}) (sql.Result, error) {
+	return database.db.Exec(sql, args...)
+}*/
+
 type Adapter interface {
+	CreateDb() (bool, error)
+	DropDb() (bool, error)
 	Close() error
 	Query(sql string, args ...interface{}) (*sql.Rows, error)
 	Exec(sql string, args ...interface{}) (sql.Result, error)
@@ -22,6 +44,8 @@ func GetAdapter(dsn string) Adapter {
 	switch strings.ToLower(DsnChunks[0]) {
 	case "sqlite":
 		db, _ = MakeSQLite(DsnChunks[1])
+	case "mysql":
+		db, _ = MakeMySQL(DsnChunks[1])
 	default:
 		panic("Invalid database connection: " + dsn)
 	}
