@@ -31,6 +31,8 @@ const (
 	DOOP_SUFFIX_V        = "v"    //v section
 	DOOP_SUFFIX_H        = "h"    //h section
 	DOOP_SUFFIX_VIEW     = "view" //view section
+	DOOP_DEFAULT_META    = "{}"
+	DOOP_NULL_BRANCH     = "INIT" //the branch before master branch
 )
 
 type DoopDbInfo struct {
@@ -101,6 +103,34 @@ func (doopdb *DoopDb) createMaster() error {
 	return nil
 }
 
+func (doopdb *DoopDb) getParentBranch(branchName string) (string, error) {
+	statement := fmt.Sprintf(`
+		SELECT parent FROM %s WHERE 
+			name = ?
+			`, DOOP_TABLE_BRANCH)
+	rows, err := doopdb.adapter.Query(statement, branchName)
+	if err != nil {
+		msg := fmt.Sprintf("failed to get parent branch of branch %s. Error: %s", branchName, err.Error())
+		return "", errors.New(msg)
+	}
+	defer rows.Close()
+
+	cnt := 0
+	var parentBranch string
+	for rows.Next() {
+		cnt += 1
+		if cnt > 1 {
+			msg := fmt.Sprintf("branch %s should not have more than one parent branch.", branchName)
+			return "", errors.New(msg)
+		}
+		rows.Scan(&parentBranch)
+	}
+	if parentBranch == "" {
+		msg := fmt.Sprintf("fail to scan for parentBranch")
+		return "", errors.New(msg)
+	}
+	return parentBranch, nil
+}
 func (doopdb *DoopDb) dropTable(tableName string) error {
 	_, err := doopdb.adapter.Exec(fmt.Sprintf(`DROP TABLE %s;`, tableName))
 	return err
@@ -157,7 +187,7 @@ func (doopdb *DoopDb) Init() error {
 	}
 
 	// Create default branch
-	_, err = doopdb.CreateBranch(DOOP_DEFAULT_BRANCH, "")
+	_, err = doopdb.CreateBranch(DOOP_DEFAULT_BRANCH, DOOP_NULL_BRANCH)
 	if err != nil {
 		msg := fmt.Sprintf("failed to create default branch : %s", err.Error())
 		return errors.New(msg)
@@ -334,9 +364,14 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 		return false, errors.New("Parent branch name is not specified.")
 	}
 	// insert a row with branch and its parent name along with metadata (empty json object for now)
-	_, err := doopdb.adapter.Exec(`INSERT INTO `+DOOP_TABLE_BRANCH+` (name, parent, metadata) VALUES (?, ?, '{}')`, branchName, parentBranch)
+	statement := fmt.Sprintf(`INSERT INTO %s (name, parent, metadata) VALUES (
+		?, 
+		?,	
+	    ?	
+	)`, DOOP_TABLE_BRANCH)
+	_, err := doopdb.adapter.Exec(statement, branchName, parentBranch, DOOP_DEFAULT_META)
 	if err != nil {
-		msg := fmt.Sprintf("fail to create %s table. Error: %s", DOOP_TABLE_BRANCH, err.Error())
+		msg := fmt.Sprintf("fail to add entry into %s table. Error: %s", DOOP_TABLE_BRANCH, err.Error())
 		return false, errors.New(msg)
 	}
 
@@ -425,9 +460,21 @@ func (doopdb *DoopDb) CreateLogicalView(branchName string, tableName string) (bo
 	hsec := ConcreteName(tableName, branchName, DOOP_SUFFIX_H)
 
 	// TODO: complete the view to incorporate all the elements including vdel, hdel and etc.
+
+	//Now the first part is not the base table, but the logical view of the table in parent branch
+	parentBranch, err := doopdb.getParentBranch(branchName)
+	if err != nil {
+		return false, err
+	}
+	var parentLogicalView string
+	if parentBranch == DOOP_NULL_BRANCH {
+		parentLogicalView = tableName
+	} else {
+		parentLogicalView = ConcreteName(tableName, parentBranch, DOOP_SUFFIX_VIEW)
+	}
 	viewCreationSql := fmt.Sprintf(`CREATE VIEW %s AS 
-		SELECT * FROM %s UNION SELECT * FROM %s;`, viewName, tableName, hsec)
-	_, err := doopdb.adapter.Exec(viewCreationSql)
+		SELECT * FROM %s UNION SELECT * FROM %s;`, viewName, parentLogicalView, hsec)
+	_, err = doopdb.adapter.Exec(viewCreationSql)
 	if err != nil {
 		return false, err
 	}
