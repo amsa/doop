@@ -397,7 +397,6 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 			return ConcreteName(origin, prefix, suffix)
 		}
 		hsec := doopdb.sqlParser.Rewrite(schema, rewriter, tables)
-		fmt.Println(hsec)
 
 		_, err = doopdb.adapter.Exec(hsec)
 
