@@ -62,7 +62,7 @@ func list(doop *core.Doop, args []string) {
 			fmt.Println("    " + db)
 		}
 	} else { // show the list of branches for the given database
-		fmt.Printf("List of branches for `%s`:", args[0])
+		fmt.Printf("List of branches for `%s`: \n", args[0])
 		branches, err := doop.GetDoopDb(args[0]).ListBranches()
 		if err != nil {
 			fmt.Println(err)
@@ -88,7 +88,10 @@ func run(doop *core.Doop, args []string) {
 	sql := strings.Join(args[1:], " ")
 	sqlOp := strings.SplitN(sql, " ", 2)
 	if strings.ToUpper(sqlOp[0]) == "SELECT" {
-		results, _ := doop.GetDoopDb(branchInfo[1]).Query(branchInfo[0], sql)
+		results, err := doop.GetDoopDb(branchInfo[1]).Query(branchInfo[0], sql)
+		if err != nil {
+			fmt.Println(err)
+		}
 		cols, _ := results.Columns()
 
 		// create table writer to write to stdout
@@ -122,17 +125,16 @@ func run(doop *core.Doop, args []string) {
 }
 
 func remove(doop *core.Doop, args []string) {
-	if len(args) != 2 {
-		fmt.Println("Too few arguments passed. usage: rm -d|-b <alias> (e.g. doop rm -d mydb)")
+	if len(args) != 1 {
+		fmt.Println("Too few arguments passed. usage: rm <[branch@]alias> (e.g. doop rm test@mydb)")
 		return
 	}
-	if args[0] == "-d" {
-		doop.UntrackDb(args[1])
-		fmt.Println("Database removed from Doop: " + args[1])
-	} else if args[0] == "-b" {
-		// TODO: handle removing branch
+	branchInfo := strings.Split(args[0], "@")
+	if len(branchInfo) == 1 {
+		doop.UntrackDb(branchInfo[0])
+		fmt.Println("Database removed from Doop: " + branchInfo[0])
 	} else {
-		fmt.Println("Invalid option passed to rm: " + args[0])
+		// TODO: handle removing branch
 	}
 }
 

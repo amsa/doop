@@ -97,7 +97,7 @@ func (sqlParser *SqlParser) parseSelect(query string) (*Sql, error) {
 	sql := new(Sql)
 	sql.Raw = query
 	sql.Type = SQL_TYPE_DML
-	sql.Op = matches[1]
+	sql.Op = "SELECT"
 	sql.Columns = matches[2]
 	sql.TblName = matches[3]
 	sql.Tail = matches[4]
