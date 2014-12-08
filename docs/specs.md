@@ -99,7 +99,7 @@ Basically, we have:
 
 Then we rewrite the statement into:
         
-    INSERT INTO hsection (concrete_snapshot_columns, new_columns) VALUES (hsection_values, new_column_values);
+    INSERT INTO hsection ([concrete_snapshot_columns] + [new_columns]) VALUES ([hsection_values] + [new_column_values]);
 
 ###Add new columns
 In `B[i]`, we issue the statement:
