@@ -32,3 +32,8 @@ echo "> doop run test@demo 'SELECT * FROM products'"
 doop run test@demo 'SELECT * FROM products'
 sleep $SLEEP_TIME
 echo
+
+echo "> doop run master@demo 'SELECT * FROM products'"
+doop run master@demo 'SELECT * FROM products'
+sleep $SLEEP_TIME
+
