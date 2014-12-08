@@ -36,4 +36,29 @@ echo
 echo "> doop run master@demo 'SELECT * FROM products'"
 doop run master@demo 'SELECT * FROM products'
 sleep $SLEEP_TIME
+echo
 
+echo "> doop branch demo nested test"
+doop branch demo nested test
+sleep $SLEEP_TIME
+echo
+
+echo "> doop run nested@demo 'INSERT INTO products (id, name, type, price) VALUES (8, "OCZ SATA III 240G", "SSD", 180.99)'"
+doop run nested@demo 'INSERT INTO products (id, name, type, price) VALUES (8, "OCZ SATA III 240G", "SSD", 180.99)' &> /dev/null
+sleep $SLEEP_TIME
+echo
+
+echo "> doop run nested@demo 'SELECT * FROM products'"
+doop run nested@demo 'SELECT * FROM products'
+sleep $SLEEP_TIME
+echo
+
+echo "> doop run test@demo 'SELECT * FROM products'"
+doop run test@demo 'SELECT * FROM products'
+sleep $SLEEP_TIME
+echo
+
+echo "> doop run master@demo 'SELECT * FROM products'"
+doop run master@demo 'SELECT * FROM products'
+sleep $SLEEP_TIME
+echo
