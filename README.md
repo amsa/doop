@@ -9,15 +9,16 @@ Doop is:
 
 ##`Doop struct` implements following functions
 1. `TrackDB(dsn string) (bool, error)` -- start managing the database by given dsn.
-2. `ListDBs() ([]string, error)` -- list the names of databases this Doop instance is managing.
+2. `ListDBs() ([]string)` -- list the names of databases this Doop instance is managing.
 3. `GetDB(db_name string) (*DoopDB, error)` -- given the name, return the corresponding DoopDB object 
-4. `RemoveDB(db_name string) (bool, error)` -- remove the DoopDB from current Doop instance
+4. `UntrackDb(db_name string) (bool, error)` -- untrack the database 
 
 ##`DoopDB struct` implements following functions
-1. `createBranch(branch_name string, base_branch string) (bool, error)`
-2. `removeBranch(branch_name string) (bool, error)`
-3. `listBranches() ([]string, error)` 
-4. `executeSQL(sql_string string, branch_name string, result *Result_type) (bool, error)`
+1. `Init() error`
+2. `CreateBranch(branch_name string, base_branch string) (bool, error)`
+3. `ListBranches() ([]string, error)` 
+4. `Exec(branchName string, sql string, args ...interface{}) (sql.Result, error)`
+5. `Query(branchName string, sql string, args ...interface{}) (*sql.Rows, error)`
 
 
 Command-line interface
@@ -44,10 +45,19 @@ There is a standard format for DSN to connect to different databases:
 - postgres:   postgresql://username:password@address/dbname?param=value
 ```
 
-Required packages
-================
+Required dependencies
+==================
 - [TableWriter](https://github.com/olekukonko/tablewriter)
 - [Testify](https://github.com/stretchr/testify) (only for running tests)
+
+Installation
+=============
+1. Follow the instruction to [install Go distribution](http://golang.org/doc/install) for your OS
+2. Install required dependencies as mentioned in the section above
+3. If you have set Go environment variables properly you can run `go install` inside Doop root directory
+4. Now if you have `$GOROOT/bin` in your `$PATH` you should be able to run `doop`
+
+Alternatively, if you don't want to install it, you can simply run `go run doop.go` inside Doop root directory
 
 Contributors
 ============
