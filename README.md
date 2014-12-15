@@ -54,8 +54,9 @@ Installation
 =============
 1. Follow the instruction to [install Go distribution](http://golang.org/doc/install) for your OS
 2. Install required dependencies as mentioned in the section above
-3. If you have set Go environment variables properly you can run `go install` inside Doop root directory
-4. Now if you have `$GOROOT/bin` in your `$PATH` you should be able to run `doop`
+3. Clone the Doop repository (go get github.com/amsa/doop)
+4. If you have set Go environment variables properly you can run `go install` inside Doop root directory
+5. Now if you have `$GOROOT/bin` in your `$PATH` you should be able to run `doop`
 
 Alternatively, if you don't want to install it, you can simply run `go run doop.go` inside Doop root directory
 
