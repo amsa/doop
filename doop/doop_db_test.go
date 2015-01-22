@@ -1,4 +1,4 @@
-package core
+package doop
 
 /*
 tests for doop_db.go

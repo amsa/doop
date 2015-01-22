@@ -1,4 +1,4 @@
-package core
+package doop
 
 /*
 DoopDb provides the same interface as Adapter.

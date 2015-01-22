@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/amsa/doop/common"
-	"github.com/amsa/doop/core"
+	"github.com/amsa/doop/doop"
 	"github.com/olekukonko/tablewriter"
 )
 
@@ -24,7 +24,7 @@ func help() {
 	-v			enable verbose mode`)
 }
 
-func branch(doop *core.Doop, args []string) {
+func branch(args []string) {
 	if len(args) < 2 { // at least two arguments should be passed
 		fmt.Println("Too few arguments passed. usage: doop branch <alias> <new> [<from>] (e.g. doop branch mydb newbranch)")
 		return
@@ -42,7 +42,7 @@ func branch(doop *core.Doop, args []string) {
 	}
 }
 
-func initialize(doop *core.Doop, args []string) {
+func initialize(args []string) {
 	if len(args) != 2 {
 		fmt.Println("Too few arguments passed. usage: doop init <alias> <DSN> (e.g. doop init mydb sqlite:///usr/local/mydb.db)")
 		return
@@ -55,7 +55,7 @@ func initialize(doop *core.Doop, args []string) {
 	}
 }
 
-func list(doop *core.Doop, args []string) {
+func list(args []string) {
 	if len(args) == 0 { // show the list of the databases
 		fmt.Println("List of databases:")
 		for _, db := range doop.ListDbs() {
@@ -74,7 +74,7 @@ func list(doop *core.Doop, args []string) {
 	}
 }
 
-func run(doop *core.Doop, args []string) {
+func run(args []string) {
 	if len(args) < 2 {
 		fmt.Println("Too few arguments passed. usage: run <branch@db> <sql> (e.g. doop run mybranch@mydb SELECT * FROM user)")
 		return
@@ -124,7 +124,7 @@ func run(doop *core.Doop, args []string) {
 	}
 }
 
-func remove(doop *core.Doop, args []string) {
+func remove(args []string) {
 	if len(args) != 1 {
 		fmt.Println("Too few arguments passed. usage: rm <[branch@]alias> (e.g. doop rm test@mydb)")
 		return
@@ -139,7 +139,6 @@ func remove(doop *core.Doop, args []string) {
 }
 
 func main() {
-	doop := core.GetDoop()
 	var args []string
 	for i := range os.Args {
 		if os.Args[i] == "-v" { // enable verbose mode
@@ -154,19 +153,16 @@ func main() {
 	}
 	switch args[1] {
 	case "init":
-		initialize(doop, args[2:])
+		initialize(args[2:])
 	case "list":
-		list(doop, args[2:])
+		list(args[2:])
 	case "branch":
-		branch(doop, args[2:])
+		branch(args[2:])
 	case "rm":
-		remove(doop, args[2:])
+		remove(args[2:])
 	case "run":
-		run(doop, args[2:])
+		run(args[2:])
 	default:
 		fmt.Errorf("Invalid command: %s", os.Args[1])
 	}
-
-	//result := doop.Query("SELECT * FROM Towns;")
-	//fmt.Println(result)
 }
