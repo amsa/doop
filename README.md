@@ -1,3 +1,5 @@
+[![Coverage Status](https://coveralls.io/repos/amsa/doop/badge.svg)](https://coveralls.io/r/amsa/doop)
+
 What is Doop?
 =============
 Doop is a tool that aims to provide branching and versioning for your database, just like what Git does for your code base! 
