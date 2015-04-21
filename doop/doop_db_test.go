@@ -265,7 +265,7 @@ func (suite *SuiteTester) TestListBranches() {
 	suite.Equal(new_branch, branches[1])
 }
 
-func (suite *SuiteTester) TestQueryBasic() {
+func (suite *SuiteTester) TestQueryExecBasic() {
 	//original setting
 	original_tables, err := suite.db.GetAllTableSchema()
 	assert.NotEmpty(suite.T(), original_tables)
@@ -293,10 +293,45 @@ func (suite *SuiteTester) TestQueryBasic() {
 		}
 	}
 
-	//test limited queries
+	//create more branch
+	branch_name := "branch1"
+	suite.db.CreateBranch(branch_name, DOOP_DEFAULT_BRANCH)
+	//Insert new rows into each branch
+	suite.db.Exec(branch_name, "INSERT INTO t1 VALUES(1827, 8718, 'test branch1')")
+	suite.db.Exec(DOOP_DEFAULT_BRANCH, "INSERT INTO t1 VALUES(1927, 7718, 'test master')")
+
+	q := `select * from t1 where id1 = 1827` //shold only succeed in new branch
+
+	rows1, err := suite.db.Query(DOOP_DEFAULT_BRANCH, q)
+	defer rows1.Close()
+	suite.Nil(err)
+	rows2, err := suite.db.Query(branch_name, q)
+	defer rows2.Close()
+	suite.Nil(err)
+
+	rows1_itr, err := common.RowToStrings(rows1)
+	suite.Nil(err)
+	suite.Nil(rows1_itr())
+
+	rows2_itr, err := common.RowToStrings(rows2)
+	suite.Nil(err)
+	suite.NotNil(rows2_itr())
+	suite.Nil(rows2_itr())
+
+	q = `select * from t1 where id1 = 1927` //shold only succeed in DEFAULT_BRANCH
+	rows3, err := suite.db.Query(DOOP_DEFAULT_BRANCH, q)
+	suite.Nil(err)
+
+	rows3_itr, err := common.RowToStrings(rows3)
+	suite.NotNil(rows3_itr())
+	suite.Nil(rows3_itr())
 }
 
-func (suite *SuiteTester) TestExecBasic() {
+func (suite *SuiteTester) TestQueryExec() {
+	suite.True(false)
+}
+
+func (suite *SuiteTester) TestExecErrorHandling() {
 	tables, _ := suite.db.GetAllTableSchema()
 	suite.db.Init()
 
@@ -354,5 +389,5 @@ func (suite *SuiteTester) TestGetParentBranch() {
 }
 
 func (suite *SuiteTester) TestRemoveBranch() {
-
+	suite.True(false)
 }
