@@ -8,10 +8,10 @@ import "fmt"
 
 func SetupDb(db Adapter) {
 	setup := []string{
-		"CREATE TABLE t1 (id INTEGER PRIMARY KEY, c1 INTEGER, c2 varchar(32));",
-		"CREATE TABLE t2 (id INTEGER PRIMARY KEY, c1 INTEGER, c2 varchar(32));",
-		"CREATE TABLE t3 (id INTEGER PRIMARY KEY, c1 INTEGER, c2 varchar(32));",
-		"CREATE TABLE t4 (id INTEGER PRIMARY KEY, c1 INTEGER, c2 varchar(32));",
+		"CREATE TABLE t1 (id1 INTEGER PRIMARY KEY, c1 INTEGER, c2 varchar(32));",
+		"CREATE TABLE t2 (id2 BIGINT PRIMARY KEY, c1 INTEGER, c2 varchar(32));",
+		"CREATE TABLE t3 (id3 INT PRIMARY KEY, c1 INTEGER, c2 varchar(32));",
+		"CREATE TABLE t4 (id4 FLOAT PRIMARY KEY, c1 INTEGER, c2 varchar(32));",
 		"INSERT INTO t1 VALUES(1,1,'HEY');",
 		"INSERT INTO t1 VALUES(2,1,'HEY');",
 		"INSERT INTO t1 VALUES(3,1,'HEY');",
