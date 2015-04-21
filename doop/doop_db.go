@@ -16,7 +16,8 @@ import (
 
 	"github.com/amsa/doop/adapter"
 	. "github.com/amsa/doop/common"
-	"github.com/amsa/doop/parser"
+	//"github.com/amsa/doop/parser"
+	"github.com/xwb1989/sql_parser"
 )
 
 const (
@@ -45,13 +46,11 @@ type DoopDb struct {
 	info         *DoopDbInfo
 	adapter      adapter.Adapter
 	branchTables map[string]map[string]string
-	sqlParser    *parser.SqlParser
 }
 
 func MakeDoopDb(info *DoopDbInfo) *DoopDb {
 	adpt := adapter.GetAdapter(info.DSN)
-	parser := parser.MakeSqlParser()
-	return &DoopDb{info, adpt, make(map[string]map[string]string, 16), parser}
+	return &DoopDb{info, adpt, make(map[string]map[string]string, 16)}
 }
 
 /*
@@ -226,22 +225,27 @@ func (doopdb *DoopDb) Query(branchName string, sql string, args ...interface{}) 
 	}
 
 	//Only handle SELECT
-	sql_parsed, err := doopdb.sqlParser.Parse(sql)
+	sql_parsed, err := sqlparser.Parse(sql)
 	if err != nil {
 		return nil, err
 	}
-	if sql_parsed.Op != "SELECT" {
+	if _, ok := sql_parsed.(*sqlparser.Select); !ok {
 		return nil, errors.New(fmt.Sprintf("Invalid sql has been passed to Query: %s", sql))
 	}
 
 	//rewrite sql
-	rewriter := func(origin string) string {
+	rewriter := func(origin []byte) []byte {
 		prefix := branchName
 		suffix := DOOP_SUFFIX_VIEW
-		return ConcreteName(origin, prefix, suffix)
-	}
 
-	rewritten_sql := doopdb.sqlParser.Rewrite(sql, rewriter, tables)
+		s := string(origin)
+		if _, ok := tables[s]; ok {
+			s = ConcreteName(s, prefix, suffix)
+		}
+		return []byte(s)
+	}
+	sqlparser.Rewrite(sql_parsed, rewriter)
+	rewritten_sql := sqlparser.String(sql_parsed)
 	return doopdb.adapter.Query(rewritten_sql, args...)
 }
 
@@ -255,24 +259,29 @@ func (doopdb *DoopDb) Exec(branchName string, sql string, args ...interface{}) (
 		return nil, err
 	}
 
-	sql_parsed, err := doopdb.sqlParser.Parse(sql)
+	sql_parsed, err := sqlparser.Parse(sql)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(fmt.Sprintf("unable to parse sql: %s", sql))
 	}
 
-	if sql_parsed.Op == "SELECT" {
-		return nil, errors.New(fmt.Sprintf("Invalid sql has been passed to Exec: %s", sql))
+	if _, ok := sql_parsed.(*sqlparser.Insert); !ok {
+		return nil, errors.New(fmt.Sprintf("Invalid or unsupported sql has been passed: %s", sql))
 	}
 
-	//rewrite sql
-	rewriter := func(origin string) string {
+	//rewrite sq
+	rewriter := func(origin []byte) []byte {
 		prefix := branchName
 		suffix := DOOP_SUFFIX_H
-		return ConcreteName(origin, prefix, suffix)
-	}
 
-	rewrittenSql := doopdb.sqlParser.Rewrite(sql, rewriter, tables)
-	return doopdb.adapter.Exec(rewrittenSql, args...)
+		s := string(origin)
+		if _, ok := tables[s]; ok {
+			s = ConcreteName(s, prefix, suffix)
+		}
+		return []byte(s)
+	}
+	sqlparser.Rewrite(sql_parsed, rewriter)
+	rewritten_sql := sqlparser.String(sql_parsed)
+	return doopdb.adapter.Exec(rewritten_sql, args...)
 }
 
 func (doopdb *DoopDb) GetSchema(branchName string, tableName string) ([]string, error) {
@@ -425,14 +434,25 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 			return false, errors.New(msg)
 		}
 
+		sql_parsed, err := sqlparser.Parse(schema)
+		if err != nil {
+			msg := fmt.Sprintf("failed to parse \n%s\n: %s", schema, err.Error())
+			return false, errors.New(msg)
+		}
 		//hsec
-		rewriter := func(origin string) string {
+		rewriter := func(origin []byte) []byte {
+			s := string(origin)
 			prefix := branchName
 			suffix := DOOP_SUFFIX_H
-			return ConcreteName(origin, prefix, suffix)
+			if _, ok := tables[s]; ok {
+				s = ConcreteName(s, prefix, suffix)
+			}
+			return []byte(s)
 		}
-		hsec := doopdb.sqlParser.Rewrite(schema, rewriter, tables)
 
+		sqlparser.Rewrite(sql_parsed, rewriter)
+
+		hsec := sqlparser.String(sql_parsed)
 		_, err = doopdb.adapter.Exec(hsec)
 
 		if err != nil {

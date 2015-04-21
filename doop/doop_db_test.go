@@ -304,11 +304,11 @@ func (suite *SuiteTester) TestExecBasic() {
 		//select is not valid operation for Exec
 		statement := fmt.Sprintf("SELECT * FROM %s", t)
 		_, err := suite.db.Exec("master", statement)
-		suite.NotNil(err)
+		suite.NotNil(err, "failed to exec: %s", statement)
 
-		statement = fmt.Sprintf("INSERT INTO %s VALUES (8, 10, 'baz');", t)
+		statement = fmt.Sprintf("INSERT INTO %s VALUES (8, 10, 'baz')", t)
 		_, err = suite.db.Exec("master", statement)
-		suite.Nil(err)
+		suite.Nil(err, "failed to exec: %s", statement)
 	}
 }
 
