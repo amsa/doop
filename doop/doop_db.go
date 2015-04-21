@@ -395,6 +395,13 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 
 	//create companian tables for each logical table
 	for tableName, schema := range tables {
+		//parse the schema
+		schema_parsed, err := sqlparser.Parse(schema)
+		if err != nil {
+			msg := fmt.Sprintf("failed to parse schema: %s", err.Error())
+			return false, errors.New(msg)
+		}
+
 		//vdel
 		vdel_name := ConcreteName(tableName, branchName, DOOP_SUFFIX_VD)
 		vdel := fmt.Sprintf(`
@@ -402,17 +409,20 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 				c_name char(128)
 			)	
 		`, vdel_name)
-		_, err := doopdb.adapter.Exec(vdel)
+		_, err = doopdb.adapter.Exec(vdel)
 		if err != nil {
 			msg := fmt.Sprintf("failed to create vdel: %s", err.Error())
 			return false, errors.New(msg)
 		}
 
 		//hdel
-		//TODO finish schema parsing, them complete this part
-		// Currently it defaultly use integer as the type of the key
+		pk, err := sqlparser.GetPrimaryKey(schema_parsed)
+		if err != nil {
+			msg := fmt.Sprintf("failed to extract the primary key of schema: %s", err.Error())
+			return false, errors.New(msg)
+		}
 		hdel_name := ConcreteName(tableName, branchName, DOOP_SUFFIX_HD)
-		hdel := fmt.Sprintf("CREATE TABLE %s (id integer)", hdel_name)
+		hdel := fmt.Sprintf("CREATE TABLE %s (%s)", hdel_name, sqlparser.String(pk))
 		_, err = doopdb.adapter.Exec(hdel)
 		if err != nil {
 			msg := fmt.Sprintf("failed to create hdel: %s", err.Error())
@@ -420,25 +430,16 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 		}
 
 		//vsec
-		//sql, err := sqlParser.Parse(schema)
-		//TODO finish schema parsing, them complete this part
-		//now it assume there is a column call "id" in all table
-
 		vsec_name := ConcreteName(tableName, branchName, DOOP_SUFFIX_V)
 		vsec := fmt.Sprintf(`
-			CREATE TABLE %s AS SELECT id FROM %s
-		`, vsec_name, tableName)
+			CREATE TABLE %s AS SELECT %s FROM %s
+		`, vsec_name, pk.ColName, tableName)
 		_, err = doopdb.adapter.Exec(vsec)
 		if err != nil {
 			msg := fmt.Sprintf("failed to execute \n%s\n: %s", vsec, err.Error())
 			return false, errors.New(msg)
 		}
 
-		sql_parsed, err := sqlparser.Parse(schema)
-		if err != nil {
-			msg := fmt.Sprintf("failed to parse \n%s\n: %s", schema, err.Error())
-			return false, errors.New(msg)
-		}
 		//hsec
 		rewriter := func(origin []byte) []byte {
 			s := string(origin)
@@ -450,9 +451,9 @@ func (doopdb *DoopDb) CreateBranch(branchName string, parentBranch string) (bool
 			return []byte(s)
 		}
 
-		sqlparser.Rewrite(sql_parsed, rewriter)
-
-		hsec := sqlparser.String(sql_parsed)
+		//rewrite talbe names to create hsec
+		sqlparser.Rewrite(schema_parsed, rewriter)
+		hsec := sqlparser.String(schema_parsed)
 		_, err = doopdb.adapter.Exec(hsec)
 
 		if err != nil {
