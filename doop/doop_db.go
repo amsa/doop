@@ -17,7 +17,7 @@ import (
 	"github.com/amsa/doop/adapter"
 	. "github.com/amsa/doop/common"
 	//"github.com/amsa/doop/parser"
-	"github.com/xwb1989/sql_parser"
+	"github.com/xwb1989/sqlparser"
 )
 
 const (
